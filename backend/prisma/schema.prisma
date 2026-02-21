@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Market {
+  id                  BigInt   @id
+  question            String
+  category            String
+  resolutionSource    String
+  creator             String
+  collateral          String
+  yesPool             Decimal  @default(0) @db.Decimal(30, 6)
+  noPool              Decimal  @default(0) @db.Decimal(30, 6)
+  closingTime         DateTime
+  settlementDeadline  DateTime
+  outcome             Int      @default(0) // 0=UNRESOLVED 1=YES 2=NO 3=INVALID
+  settlementRequested Boolean  @default(false)
+  aiConfidenceBps     BigInt   @default(0)
+  aiReasoning         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  trades  Trade[]
+
+  @@map("markets")
+}
+
+model Trade {
+  id          Int      @id @default(autoincrement())
+  marketId    BigInt
+  wallet      String
+  side        String   // "YES" | "NO"
+  usdcAmount  Decimal  @db.Decimal(30, 6)
+  action      String   // "BUY" | "SELL"
+  txHash      String?
+  blockNumber BigInt?
+  logIndex    Int?
+  createdAt   DateTime @default(now())
+
+  market Market @relation(fields: [marketId], references: [id])
+
+  @@unique([txHash, logIndex])
+  @@index([marketId])
+  @@index([wallet])
+  @@map("trades")
+}
+
+model IndexerState {
+  id        Int    @id @default(1)
+  lastBlock BigInt @default(0)
+
+  @@map("indexer_state")
+}

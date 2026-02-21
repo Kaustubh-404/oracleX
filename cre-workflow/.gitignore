@@ -1,0 +1,12 @@
+# environment
+.env
+.env.*
+
+# CRE secrets (never commit)
+secrets.yaml
+
+# logs
+*.log
+
+# misc
+.DS_Store

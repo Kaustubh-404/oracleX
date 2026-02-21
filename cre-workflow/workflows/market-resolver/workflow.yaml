@@ -1,0 +1,31 @@
+# OracleX Market Resolver — CRE Workflow Configuration
+name: oraclex-market-resolver
+version: "1.0.0"
+sdk:
+  language: typescript
+
+triggers:
+  # Fires when OracleX contract emits SettlementRequested(uint256,string,uint256)
+  - type: evm-log
+    config:
+      address: "0x9eE8B1E0A915A8EE1c0864F96695d54E7cDEd5d2"
+      topics:
+        # keccak256("SettlementRequested(uint256,string,uint256)")
+        - "0x813a00d90f295e3a328f8a3c7a7df73ee8ae3729dad74d6d0cc81b0d0711a7a8"
+      chain: "ethereum-sepolia"
+      confirmations: finalized
+
+targets:
+  - id: sepolia
+    chain: "ethereum-sepolia"
+    rpcUrl: "https://eth-sepolia.g.alchemy.com/v2/rk_38zxS9Qc_U8eYtmTmP"
+    contracts:
+      - name: OracleX
+        address: "0x9eE8B1E0A915A8EE1c0864F96695d54E7cDEd5d2"
+        abi: ../../abis/OracleX.json
+
+settings:
+  timeoutSeconds: 120
+  gasConfig:
+    maxFeePerGas: "50000000000"
+    maxPriorityFeePerGas: "2000000000"
