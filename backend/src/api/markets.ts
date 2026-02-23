@@ -139,9 +139,9 @@ function serializeMarket(m: Record<string, unknown>): Record<string, unknown> {
     aiConfidenceBps: m.aiConfidenceBps?.toString(),
     yesPool:         m.yesPool?.toString(),
     noPool:          m.noPool?.toString(),
-    closingTime:     m.closingTime instanceof Date ? m.closingTime.toISOString() : m.closingTime,
+    closingTime:     m.closingTime instanceof Date ? Math.floor((m.closingTime as Date).getTime() / 1000).toString() : m.closingTime,
     settlementDeadline: m.settlementDeadline instanceof Date
-      ? (m.settlementDeadline as Date).toISOString()
+      ? Math.floor((m.settlementDeadline as Date).getTime() / 1000).toString()
       : m.settlementDeadline,
     createdAt:  m.createdAt instanceof Date  ? (m.createdAt  as Date).toISOString() : m.createdAt,
     updatedAt:  m.updatedAt instanceof Date  ? (m.updatedAt  as Date).toISOString() : m.updatedAt,

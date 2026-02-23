@@ -1,152 +1,123 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActiveAccount } from "thirdweb/react";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
 
-interface LeaderEntry {
-  rank:        number;
-  wallet:      string;
-  totalVolume: string;
-  tradeCount:  number;
-  grade?:      string | null;
-}
+interface LeaderEntry { rank: number; wallet: string; totalVolume: string; tradeCount: number; grade?: string | null; }
 
-function shortAddr(addr: string) {
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
-}
-
-function formatUSDC(raw: string) {
+function shortAddr(addr: string) { return `${addr.slice(0, 6)}…${addr.slice(-4)}`; }
+function fmtVol(raw: string) {
   const n = parseFloat(raw);
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000)     return `$${(n / 1_000).toFixed(2)}K`;
+  if (n >= 1_000)     return `$${(n / 1_000).toFixed(1)}K`;
   return `$${n.toFixed(2)}`;
 }
 
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
-
-const GRADE_COLOR: Record<string, string> = {
-  A: "text-green-400",
-  B: "text-blue-400",
-  C: "text-yellow-400",
-  D: "text-orange-400",
-  F: "text-red-400",
+const GRADE_BG: Record<string, string> = {
+  A: "bg-[#99ff88] text-black", B: "bg-[#d3aeff] text-black",
+  C: "bg-yellow-300 text-black", D: "bg-orange-300 text-black", F: "bg-[#ff6961] text-white",
 };
 
 export default function LeaderboardPage() {
+  const account = useActiveAccount();
+  const router  = useRouter();
   const [entries, setEntries] = useState<LeaderEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
 
   useEffect(() => {
+    if (account === undefined) return;
+    if (!account) router.replace("/");
+  }, [account, router]);
+
+  useEffect(() => {
     fetch(`${BACKEND_URL}/positions/leaderboard/all?limit=50`)
       .then((r) => r.json())
       .then(async (data: LeaderEntry[]) => {
-        // Fetch Brier grades for all entries in parallel (best-effort)
         const withGrades = await Promise.all(
           data.map(async (e) => {
             try {
               const r = await fetch(`${BACKEND_URL}/positions/${e.wallet}/brier`);
               const b = await r.json() as { grade: string | null };
               return { ...e, grade: b.grade };
-            } catch {
-              return { ...e, grade: null };
-            }
+            } catch { return { ...e, grade: null }; }
           })
         );
-        setEntries(withGrades);
-        setLoading(false);
+        setEntries(withGrades); setLoading(false);
       })
-      .catch(() => {
-        setError("Could not load leaderboard — backend offline?");
-        setLoading(false);
-      });
+      .catch(() => { setError("Backend offline — try again later"); setLoading(false); });
   }, []);
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Leaderboard</h1>
-        <p className="text-gray-400">
-          Top traders by USDC volume. Calibration grade based on Brier score across resolved markets.
-        </p>
+    <div className="min-h-screen bg-[#efe7f7] pb-28 px-4" style={{ fontFamily: "'Brice Regular', sans-serif" }}>
+      <div className="pt-5 pb-4">
+        <h1 className="text-3xl" style={{ fontFamily: "'Brice Black', sans-serif" }}>Leaderboard</h1>
+        <p className="text-sm text-black/50 mt-1">Top traders by USDC volume</p>
       </div>
 
       {loading && (
-        <div className="text-center text-gray-500 py-20">Loading…</div>
+        <div className="flex justify-center py-20">
+          <div className="w-10 h-10 border-4 border-black border-t-[#d3aeff] rounded-full animate-spin" />
+        </div>
       )}
 
-      {error && (
-        <div className="text-center text-red-400 py-20">{error}</div>
-      )}
+      {error && <div className="retro-card p-6 text-center text-[#ff6961]">{error}</div>}
 
       {!loading && !error && entries.length === 0 && (
-        <div className="text-center text-gray-500 py-20">No trades yet — be the first!</div>
+        <div className="text-center py-20">
+          <p className="text-5xl mb-3">🏆</p>
+          <p className="text-black/50">No trades yet — be the first!</p>
+        </div>
       )}
 
       {!loading && !error && entries.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-gray-500 text-xs border-b border-gray-800">
-                <th className="px-5 py-3 text-left">#</th>
-                <th className="px-5 py-3 text-left">Wallet</th>
-                <th className="px-5 py-3 text-right">Volume</th>
-                <th className="px-5 py-3 text-right">Trades</th>
-                <th className="px-5 py-3 text-right" title="Brier score calibration grade — lower is better">Grade</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e) => (
-                <tr
-                  key={e.wallet}
-                  className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
-                >
-                  <td className="px-5 py-3.5 text-gray-400 font-mono">
-                    {MEDAL[e.rank] ?? e.rank}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <a
-                      href={`/profile/${e.wallet}`}
-                      className="font-mono text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                      {shortAddr(e.wallet)}
-                    </a>
-                  </td>
-                  <td className="px-5 py-3.5 text-right text-green-400 font-semibold">
-                    {formatUSDC(e.totalVolume)}
-                  </td>
-                  <td className="px-5 py-3.5 text-right text-gray-400">
-                    {e.tradeCount.toLocaleString()}
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    {e.grade ? (
-                      <span className={`font-bold ${GRADE_COLOR[e.grade] ?? "text-gray-400"}`}>
-                        {e.grade}
-                      </span>
-                    ) : (
-                      <span className="text-gray-600">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-2">
+          {entries.map((e) => (
+            <div key={e.wallet} className="retro-card flex items-center gap-3 p-4">
+              {/* Rank */}
+              <div className="w-8 text-center font-bold text-lg shrink-0" style={{ fontFamily: "'Brice Black', sans-serif" }}>
+                {MEDAL[e.rank] ?? `#${e.rank}`}
+              </div>
+
+              {/* Wallet */}
+              <div className="flex-1 min-w-0">
+                <a href={`/profile/${e.wallet}`} className="font-bold text-sm underline decoration-dotted truncate block">
+                  {shortAddr(e.wallet)}
+                </a>
+                <p className="text-xs text-black/40">{e.tradeCount} trades</p>
+              </div>
+
+              {/* Volume */}
+              <div className="text-right shrink-0">
+                <p className="font-bold text-base" style={{ fontFamily: "'Brice Black', sans-serif" }}>
+                  {fmtVol(e.totalVolume)}
+                </p>
+                {e.grade && (
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border-2 border-black ${GRADE_BG[e.grade] ?? "bg-white"}`}>
+                    {e.grade}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Grade legend */}
-      <div className="mt-4 flex gap-4 justify-center text-xs text-gray-600">
-        {[["A","<0.10"],["B","<0.15"],["C","<0.20"],["D","<0.25"],["F","≥0.25"]].map(([g, r]) => (
-          <span key={g}>
-            <span className={`font-bold ${GRADE_COLOR[g] ?? ""}`}>{g}</span> {r}
-          </span>
-        ))}
-        <span className="text-gray-700">· Brier score (lower = better calibration)</span>
-      </div>
-
-      <p className="text-xs text-gray-600 text-center mt-3">
-        Rankings update in real-time via on-chain event indexing.
-      </p>
+      {!loading && entries.length > 0 && (
+        <div className="mt-6 retro-card p-3 flex flex-wrap gap-2 justify-center">
+          {[["A","<0.10"],["B","<0.15"],["C","<0.20"],["D","<0.25"],["F","≥0.25"]].map(([g, r]) => (
+            <span key={g} className="text-xs flex items-center gap-1">
+              <span className={`font-bold px-1.5 py-0.5 rounded border-2 border-black ${GRADE_BG[g] ?? ""}`}>{g}</span>
+              <span className="text-black/40">{r}</span>
+            </span>
+          ))}
+          <span className="text-xs text-black/30 w-full text-center mt-1">Brier score calibration (lower = better)</span>
+        </div>
+      )}
     </div>
   );
 }

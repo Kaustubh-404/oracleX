@@ -1,0 +1,19 @@
+@font-face {
+    font-family: 'Brice Light'; 
+    src: url('./Brice-Light.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Brice Regular'; 
+    src: url('./Brice-Regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Brice SemiBold'; 
+    src: url('./Brice-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Brice Black'; 
+    src: url('./Brice-Black.woff2') format('woff2');
+}

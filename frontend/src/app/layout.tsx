@@ -1,31 +1,24 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
-import { Navbar } from "@/components/Navbar";
-
-const inter = Inter({ subsets: ["latin"] });
+import { BottomNav } from "@/components/BottomNav";
+import { AuthGuard } from "@/components/AuthGuard";
 
 export const metadata: Metadata = {
-  title: "OracleX — Prediction Markets That Don't Lie",
-  description:
-    "AI-powered prediction markets resolved by Chainlink CRE. No governance tokens. No manipulation.",
+  title: "OracleX — Prediction Markets",
+  description: "AI-powered prediction markets resolved by Chainlink CRE. No manipulation.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} bg-gray-950 text-gray-100 min-h-screen`}>
+    <html lang="en">
+      <body className="bg-[#efe7f7] text-black min-h-screen">
         <Providers>
-          <Navbar />
-          <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
-          <footer className="border-t border-gray-800 mt-16 py-8 text-center text-gray-500 text-sm">
-            Built with Chainlink CRE + AI · Convergence Hackathon 2026
-          </footer>
+          <AuthGuard />
+          <div className="max-w-lg mx-auto min-h-screen relative">
+            {children}
+          </div>
+          <BottomNav />
         </Providers>
       </body>
     </html>

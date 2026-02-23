@@ -1,76 +1,84 @@
 "use client";
-import { useActiveMarkets } from "@/hooks/useMarkets";
-import { MarketCard } from "@/components/MarketCard";
-import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useActiveAccount } from "thirdweb/react";
+import { ConnectButton } from "thirdweb/react";
+import { client, CHAIN } from "@/lib/thirdweb";
 
-export default function HomePage() {
-  const { data: activeIds, isPending } = useActiveMarkets();
+export default function LandingPage() {
+  const account = useActiveAccount();
+  const router  = useRouter();
+
+  useEffect(() => {
+    if (account) router.replace("/home");
+  }, [account, router]);
 
   return (
-    <div>
-      {/* Hero */}
-      <div className="text-center mb-12 pt-4">
-        <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 text-sm text-blue-400 mb-4">
-          <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-          Powered by Chainlink CRE · No governance tokens
-        </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-          Prediction Markets
-          <br />
-          <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            That Don&apos;t Lie
-          </span>
-        </h1>
-        <p className="text-gray-400 max-w-xl mx-auto mb-8">
-          AI-powered resolution via Chainlink CRE. Every settlement is verifiable,
-          multi-source, and manipulation-proof.
-        </p>
-        <Link
-          href="/create"
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+    <div
+      className="relative flex flex-col justify-end gap-8 px-8 pb-14 pt-10 min-h-screen w-screen overflow-hidden"
+      style={{ background: "#d3aeff", fontFamily: "'Brice Regular', sans-serif" }}
+    >
+      {/* ── Decorative assets ──────────────────────────── */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/starsquare.png"
+        alt=""
+        className="absolute w-[18vw] h-[18vh] top-6 left-28 object-contain pointer-events-none select-none"
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/star2.png"
+        alt=""
+        className="absolute w-[14vw] h-[18vh] top-28 left-8 object-contain rotate-[40deg] pointer-events-none select-none"
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/flower.png"
+        alt=""
+        className="absolute w-[38vw] h-[42vh] top-20 left-28 object-contain pointer-events-none select-none"
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/star3.png"
+        alt=""
+        className="absolute w-[40vw] h-[38vh] top-4 right-6 object-contain pointer-events-none select-none"
+      />
+
+      {/* ── Headline ───────────────────────────────────── */}
+      <div className="relative z-10">
+        <h1
+          className="text-5xl leading-tight text-black"
+          style={{ fontFamily: "'Brice Black', sans-serif" }}
         >
-          + Create Market
-        </Link>
+          Predict.
+          <br />
+          Win.
+          <br />
+          Earn.
+        </h1>
+        <p className="text-sm text-black/70 mt-3 max-w-xs">
+          AI-powered prediction markets on Ethereum.<br />
+          Resolved by Chainlink CRE — no manipulation.
+        </p>
       </div>
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        {[
-          { label: "Active Markets", value: isPending ? "..." : String(activeIds?.length ?? 0) },
-          { label: "Oracle Type",    value: "Chainlink CRE" },
-          { label: "Resolution AI",  value: "Llama 3.3 70B" },
-        ].map((s) => (
-          <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <div className="text-xl font-bold text-white">{s.value}</div>
-            <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
-          </div>
-        ))}
+      {/* ── Connect Wallet ─────────────────────────────── */}
+      <div className="relative z-10 bg-black w-fit rounded-xl overflow-hidden">
+        <ConnectButton
+          client={client}
+          chain={CHAIN}
+          appMetadata={{
+            name: "OracleX",
+            description: "AI-powered prediction markets",
+          }}
+          connectButton={{ label: "Connect Wallet" }}
+        />
       </div>
 
-      {/* Markets grid */}
-      {isPending ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="rounded-xl border border-gray-800 bg-gray-900 h-44 animate-pulse" />
-          ))}
-        </div>
-      ) : !activeIds || activeIds.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
-          <p className="text-5xl mb-4">🔮</p>
-          <p className="text-lg font-medium text-gray-400">No active markets yet</p>
-          <p className="text-sm mt-1">
-            <Link href="/create" className="text-blue-400 hover:underline">
-              Create the first one
-            </Link>
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {activeIds.map((id) => (
-            <MarketCard key={id.toString()} marketId={id} />
-          ))}
-        </div>
-      )}
+      {/* Powered by label */}
+      <p className="relative z-10 text-xs text-black/50">
+        Powered by Chainlink CRE · Sepolia Testnet
+      </p>
     </div>
   );
 }

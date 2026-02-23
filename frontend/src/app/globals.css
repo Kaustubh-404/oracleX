@@ -1,28 +1,57 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ── Brice Font ───────────────────────────────────────────── */
+@font-face { font-family: 'Brice Light';    src: url('/fonts/Brice-Light.woff2')    format('woff2'); }
+@font-face { font-family: 'Brice Regular';  src: url('/fonts/Brice-Regular.woff2')  format('woff2'); }
+@font-face { font-family: 'Brice SemiBold'; src: url('/fonts/Brice-SemiBold.woff2') format('woff2'); }
+@font-face { font-family: 'Brice Black';    src: url('/fonts/Brice-Black.woff2')    format('woff2'); }
 
+/* ── Tailwind Theme Tokens ────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-yes: #22c55e;
-  --color-no: #ef4444;
+  --font-brice-light:    'Brice Light', sans-serif;
+  --font-brice-regular:  'Brice Regular', sans-serif;
+  --font-brice-semibold: 'Brice SemiBold', sans-serif;
+  --font-brice-black:    'Brice Black', sans-serif;
+  --color-retro-bg:     #efe7f7;
+  --color-retro-purple: #d3aeff;
+  --color-retro-yes:    #99ff88;
+  --color-retro-no:     #ff6961;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Global Base ──────────────────────────────────────────── */
+:root {
+  --retro-bg:     #efe7f7;
+  --retro-purple: #d3aeff;
+  --retro-yes:    #99ff88;
+  --retro-no:     #ff6961;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--retro-bg);
+  color: #000;
+  font-family: 'Brice Regular', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
+
+/* ── Retro Card ───────────────────────────────────────────── */
+.retro-card {
+  background: #fff;
+  border: 4px solid #000;
+  border-radius: 1rem;
+}
+
+/* ── Retro Button ─────────────────────────────────────────── */
+.retro-btn {
+  border: 4px solid #000;
+  border-radius: 0.75rem;
+  font-family: 'Brice SemiBold', sans-serif;
+  transition: opacity 0.15s;
+}
+.retro-btn:active { opacity: 0.8; }
+.retro-btn:disabled { opacity: 0.4; cursor: not-allowed; }
