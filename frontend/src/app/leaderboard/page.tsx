@@ -2,8 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useActiveAccount } from "thirdweb/react";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+import { backendFetch } from "@/lib/api";
 
 interface LeaderEntry { rank: number; wallet: string; totalVolume: string; tradeCount: number; grade?: string | null; }
 
@@ -34,13 +33,13 @@ export default function LeaderboardPage() {
   }, [account, router]);
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/positions/leaderboard/all?limit=50`)
+    backendFetch("/positions/leaderboard/all?limit=50")
       .then((r) => r.json())
       .then(async (data: LeaderEntry[]) => {
         const withGrades = await Promise.all(
           data.map(async (e) => {
             try {
-              const r = await fetch(`${BACKEND_URL}/positions/${e.wallet}/brier`);
+              const r = await backendFetch(`/positions/${e.wallet}/brier`);
               const b = await r.json() as { grade: string | null };
               return { ...e, grade: b.grade };
             } catch { return { ...e, grade: null }; }

@@ -1,6 +1,5 @@
 import { MiniKit, VerificationLevel, type MiniAppVerifyActionSuccessPayload } from "@worldcoin/minikit-js";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+import { backendFetch } from "./api";
 
 /** Returns true only when running inside World App */
 export function isMiniApp(): boolean {
@@ -30,7 +29,7 @@ export async function verifyForBet(marketId: string): Promise<void> {
   if (finalPayload.status !== "success") throw new Error("World ID verification cancelled");
   const p = finalPayload as MiniAppVerifyActionSuccessPayload;
 
-  const res = await fetch(`${BACKEND_URL}/verify/worldid`, {
+  const res = await backendFetch("/verify/worldid", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -56,7 +55,7 @@ export async function verifyForCreate(): Promise<void> {
   if (finalPayload.status !== "success") throw new Error("World ID verification cancelled");
   const p = finalPayload as MiniAppVerifyActionSuccessPayload;
 
-  const res = await fetch(`${BACKEND_URL}/verify/worldid`, {
+  const res = await backendFetch("/verify/worldid", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

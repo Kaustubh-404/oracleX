@@ -14,8 +14,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceLine,
 } from "recharts";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+import { backendFetch } from "@/lib/api";
 
 const OUTCOME_LABEL: Record<number, string> = { 0: "Open", 1: "YES", 2: "NO", 3: "Invalid" };
 const OUTCOME_BG: Record<number, string> = {
@@ -33,7 +32,7 @@ function ProbChart({ marketId }: { marketId: string }) {
   const [noTrades, setNoTrades] = useState(false);
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/markets/${marketId}/probability-history`)
+    backendFetch(`/markets/${marketId}/probability-history`)
       .then((r) => r.json())
       .then((data: ChartPoint[]) => {
         if (!Array.isArray(data) || data.length === 0) return;

@@ -1,13 +1,19 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useActiveAccount } from "thirdweb/react";
 import { ConnectButton } from "thirdweb/react";
 import { client, CHAIN } from "@/lib/thirdweb";
+import { isMiniApp } from "@/lib/worldid";
 
 export default function LandingPage() {
-  const account = useActiveAccount();
-  const router  = useRouter();
+  const account    = useActiveAccount();
+  const router     = useRouter();
+  const [inWorld, setInWorld] = useState(false);
+
+  useEffect(() => {
+    setInWorld(isMiniApp());
+  }, []);
 
   useEffect(() => {
     if (account) router.replace("/home");
@@ -62,17 +68,28 @@ export default function LandingPage() {
         </p>
       </div>
 
-      {/* ── Connect Wallet ─────────────────────────────── */}
-      <div className="relative z-10 bg-black w-fit rounded-xl overflow-hidden">
-        <ConnectButton
-          client={client}
-          chain={CHAIN}
-          appMetadata={{
-            name: "OracleX",
-            description: "AI-powered prediction markets",
-          }}
-          connectButton={{ label: "Connect Wallet" }}
-        />
+      {/* ── Connect Wallet / Enter App ─────────────────── */}
+      <div className="relative z-10">
+        {inWorld ? (
+          <button
+            onClick={() => router.replace("/home")}
+            className="retro-btn bg-black text-white px-6 py-3 text-base"
+          >
+            Enter App →
+          </button>
+        ) : (
+          <div className="bg-black w-fit rounded-xl overflow-hidden">
+            <ConnectButton
+              client={client}
+              chain={CHAIN}
+              appMetadata={{
+                name: "OracleX",
+                description: "AI-powered prediction markets",
+              }}
+              connectButton={{ label: "Connect Wallet" }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Powered by label */}

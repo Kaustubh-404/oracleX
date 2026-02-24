@@ -8,8 +8,7 @@ import { client, CHAIN, ORACLEX_ADDRESS, USDC_ADDRESS } from "@/lib/thirdweb";
 import { ORACLE_X_ABI, USDC_ABI } from "@/abis/OracleX";
 import { parseUSDC } from "@/lib/utils";
 import { Sparkles } from "lucide-react";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+import { backendFetch } from "@/lib/api";
 const oracleXContract = getContract({ client, chain: CHAIN, address: ORACLEX_ADDRESS, abi: ORACLE_X_ABI });
 const usdcContract    = getContract({ client, chain: CHAIN, address: USDC_ADDRESS,   abi: USDC_ABI    });
 
@@ -67,7 +66,7 @@ export default function CreatePage() {
     if (!question.trim()) return;
     setAiLoading(true); setAiError(null);
     try {
-      const r = await fetch(`${BACKEND_URL}/ai/generate-market`, {
+      const r = await backendFetch("/ai/generate-market", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category, question: question.trim() }),
       });

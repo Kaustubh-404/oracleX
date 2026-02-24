@@ -7,8 +7,7 @@ import { USDC_ABI } from "@/abis/OracleX";
 import { getContract } from "thirdweb";
 import Link from "next/link";
 import { Trophy, ChartBarBig, Copy, CheckCheck, Wallet } from "lucide-react";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+import { backendFetch } from "@/lib/api";
 const usdcContract = getContract({ client, chain: CHAIN, address: USDC_ADDRESS, abi: USDC_ABI });
 
 interface Stats { totalVolume: string; tradeCount: number; }
@@ -38,7 +37,7 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (!account) return;
-    fetch(`${BACKEND_URL}/positions/${account.address}`)
+    backendFetch(`/positions/${account.address}`)
       .then((r) => r.json())
       .then((data) => {
         const trades: { amount: string }[] = Array.isArray(data) ? data : data.trades ?? data.data ?? [];

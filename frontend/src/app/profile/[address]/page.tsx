@@ -2,8 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+import { backendFetch } from "@/lib/api";
 
 interface Position {
   marketId:    string;
@@ -76,8 +75,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!address) return;
     Promise.all([
-      fetch(`${BACKEND_URL}/positions/${address}?limit=200`).then((r) => r.json()),
-      fetch(`${BACKEND_URL}/positions/${address}/brier`).then((r) => r.json()),
+      backendFetch(`/positions/${address}?limit=200`).then((r) => r.json()),
+      backendFetch(`/positions/${address}/brier`).then((r) => r.json()),
     ])
       .then(([profileData, brierData]: [ProfileData, BrierData]) => {
         setData(profileData);

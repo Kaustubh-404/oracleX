@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActiveAccount } from "thirdweb/react";
 import Link from "next/link";
 import { formatTimeLeft, CATEGORY_META, OUTCOME_LABEL } from "@/lib/utils";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+import { backendFetch } from "@/lib/api";
 
 interface Market {
   id: number;
@@ -111,7 +110,7 @@ export default function MarketsPage() {
   }, [account, router]);
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/markets`)
+    backendFetch("/markets")
       .then((r) => r.json())
       .then((res: Market[] | { data: Market[] }) => {
         const data = Array.isArray(res) ? res : res.data;

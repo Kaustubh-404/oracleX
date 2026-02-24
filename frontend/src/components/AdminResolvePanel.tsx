@@ -4,8 +4,7 @@ import { prepareContractCall } from "thirdweb";
 import { useSendTransaction } from "thirdweb/react";
 import { oracleXContract } from "@/hooks/useMarkets";
 import { Sparkles } from "lucide-react";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+import { backendFetch } from "@/lib/api";
 
 interface AiResolution { outcome: 1 | 2 | 3; confidenceBps: number; reasoning: string; }
 interface Props { marketId: bigint; question: string; category: string; resolutionSource: string; onSettled: () => void; }
@@ -26,7 +25,7 @@ export function AdminResolvePanel({ marketId, question, category, resolutionSour
   async function askAI() {
     setStatus("asking"); setAiError(null);
     try {
-      const r = await fetch(`${BACKEND_URL}/ai/resolve-market`, {
+      const r = await backendFetch("/ai/resolve-market", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, category, resolutionSource }),
       });

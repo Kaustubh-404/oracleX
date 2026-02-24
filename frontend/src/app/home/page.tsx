@@ -11,8 +11,7 @@ import {
 } from "framer-motion";
 import { Check, X, RefreshCw } from "lucide-react";
 import { formatTimeLeft, CATEGORY_META } from "@/lib/utils";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+import { backendFetch } from "@/lib/api";
 
 interface Market {
   id: number;
@@ -155,7 +154,7 @@ export default function HomePage() {
     setDone(false);
     setIndex(0);
     const now = Math.floor(Date.now() / 1000);
-    fetch(`${BACKEND_URL}/markets`)
+    backendFetch("/markets")
       .then((r) => r.json())
       .then((res: Market[] | { data: Market[] }) => {
         const data = Array.isArray(res) ? res : res.data ?? [];

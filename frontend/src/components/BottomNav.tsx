@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useActiveWalletConnectionStatus } from "thirdweb/react";
 import { GalleryHorizontalEnd, LayoutList, Plus, ChartBarBig, UserRound } from "lucide-react";
+import { isMiniApp } from "@/lib/worldid";
 
 const NAV = [
   { href: "/home",     label: "Home",    Icon: GalleryHorizontalEnd },
@@ -16,9 +17,10 @@ export function BottomNav() {
   const status   = useActiveWalletConnectionStatus();
   const pathname = usePathname();
 
-  // Hide on landing page or when definitively disconnected
-  // Keep visible during "connecting"/"unknown" to avoid flash on navigation
-  if (pathname === "/" || status === "disconnected") return null;
+  // Hide on landing page
+  // In World App: always show (no wallet). In browser: hide when disconnected.
+  if (pathname === "/") return null;
+  if (!isMiniApp() && status === "disconnected") return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#efe7f7] border-t-4 border-black">
