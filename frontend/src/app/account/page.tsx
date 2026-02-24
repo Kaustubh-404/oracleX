@@ -100,9 +100,9 @@ export default function AccountPage() {
 
         {/* Balances */}
         <div className="grid grid-cols-2 gap-3 mb-5">
-          <div className="border-4 border-black rounded-2xl p-3 bg-[#99ff88]">
+          <div className="border-4 border-black rounded-2xl p-3 bg-[#99ff88] min-w-0">
             <p className="text-xs text-black/60 mb-0.5">USDC Balance</p>
-            <p className="text-xl font-bold" style={{ fontFamily: "'Brice Black', sans-serif" }}>
+            <p className="text-base font-bold leading-tight truncate" style={{ fontFamily: "'Brice Black', sans-serif" }}>
               ${usdcBalance}
             </p>
           </div>

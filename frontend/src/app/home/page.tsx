@@ -32,11 +32,11 @@ function SwipeableCard({
   market: Market;
   onSwipe: (dir: "left" | "right") => void;
 }) {
-  const x        = useMotionValue(0);
-  const rotate   = useTransform(x, [-220, 220], [-22, 22]);
+  const x          = useMotionValue(0);
+  const rotate     = useTransform(x, [-220, 220], [-12, 12]);
   const yesOpacity = useTransform(x, [-220, 0, 80], [0, 0, 1]);
   const noOpacity  = useTransform(x, [-80, 0, 220], [1, 0, 0]);
-  const controls = useAnimation();
+  const controls   = useAnimation();
 
   const yesPct = (() => {
     const yes = Number(market.yesPool);
@@ -63,7 +63,7 @@ function SwipeableCard({
 
   return (
     <motion.div
-      className="absolute w-full touch-none"
+      className="absolute inset-0 touch-none"
       style={{ x, rotate }}
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
@@ -71,30 +71,30 @@ function SwipeableCard({
       onDragEnd={handleDragEnd}
       animate={controls}
     >
-      <div className="relative border-black border-4 rounded-2xl overflow-hidden shadow-[6px_6px_0px_#000]">
+      {/* Card fills container */}
+      <div className="relative h-full border-black border-4 rounded-2xl overflow-hidden shadow-[6px_6px_0px_#000]">
         {/* YES indicator */}
         <motion.div
-          className="absolute top-5 right-5 bg-[#99ff88] p-3.5 rounded-full border-[3px] border-black z-20"
+          className="absolute top-4 right-4 bg-[#99ff88] p-3 rounded-full border-[3px] border-black z-20"
           style={{ opacity: yesOpacity }}
         >
-          <Check strokeWidth={3} size={28} color="black" />
+          <Check strokeWidth={3} size={26} color="black" />
         </motion.div>
 
         {/* NO indicator */}
         <motion.div
-          className="absolute top-5 left-5 bg-[#ff6961] p-3.5 rounded-full border-[3px] border-black z-20"
+          className="absolute top-4 left-4 bg-[#ff6961] p-3 rounded-full border-[3px] border-black z-20"
           style={{ opacity: noOpacity }}
         >
-          <X strokeWidth={3} size={28} color="white" />
+          <X strokeWidth={3} size={26} color="white" />
         </motion.div>
 
-        {/* Card image */}
+        {/* Card image — fills height */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/cards.jpeg"
           alt="market"
-          className="w-full object-cover select-none"
-          style={{ height: "clamp(300px, 62vh, 520px)" }}
+          className="w-full h-full object-cover select-none"
           draggable={false}
         />
 
@@ -103,13 +103,11 @@ function SwipeableCard({
 
         {/* Info */}
         <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-          <span
-            className={`text-xs font-bold px-2.5 py-1 rounded-full border-2 border-white/30 bg-white/10 capitalize mb-2 inline-block`}
-          >
+          <span className="text-xs font-bold px-2.5 py-1 rounded-full border-2 border-white/30 bg-white/10 capitalize mb-2 inline-block">
             {category.emoji} {market.category}
           </span>
           <h2
-            className="text-xl leading-snug mb-3"
+            className="text-lg leading-snug mb-3 line-clamp-3"
             style={{ fontFamily: "'Brice SemiBold', sans-serif" }}
           >
             {market.question}
@@ -142,14 +140,13 @@ export default function HomePage() {
   const account = useActiveAccount();
   const router  = useRouter();
 
-  const [markets, setMarkets]   = useState<Market[]>([]);
-  const [index, setIndex]       = useState(0);
-  const [loading, setLoading]   = useState(true);
-  const [done, setDone]         = useState(false);
+  const [markets, setMarkets] = useState<Market[]>([]);
+  const [index,   setIndex]   = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [done,    setDone]    = useState(false);
 
-  // Redirect to landing if not connected
   useEffect(() => {
-    if (account === undefined) return; // still loading
+    if (account === undefined) return;
     if (!account) router.replace("/");
   }, [account, router]);
 
@@ -172,48 +169,40 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    loadMarkets();
-  }, [loadMarkets]);
+  useEffect(() => { loadMarkets(); }, [loadMarkets]);
 
   function handleSwipe(dir: "left" | "right") {
     if (dir === "right" && markets[index]) {
       router.push(`/markets/${markets[index].id}`);
     }
     const next = index + 1;
-    if (next >= markets.length) {
-      setDone(true);
-    } else {
-      setIndex(next);
-    }
+    if (next >= markets.length) setDone(true);
+    else setIndex(next);
   }
 
+  /* ── Loading ── */
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#efe7f7]">
+      <div className="flex items-center justify-center bg-[#efe7f7]" style={{ height: "100dvh" }}>
         <div className="text-center space-y-3">
           <div className="w-12 h-12 border-4 border-black border-t-[#d3aeff] rounded-full animate-spin mx-auto" />
-          <p className="font-brice-regular">Loading markets…</p>
+          <p style={{ fontFamily: "'Brice Regular', sans-serif" }}>Loading markets…</p>
         </div>
       </div>
     );
   }
 
+  /* ── All done ── */
   if (done || markets.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#efe7f7] px-8 pb-24">
-        <div className="retro-card p-8 text-center max-w-sm w-full">
+      <div className="flex flex-col items-center justify-center bg-[#efe7f7] px-8 pb-24" style={{ height: "100dvh" }}>
+        <div className="retro-card p-8 text-center w-full">
           <p className="text-5xl mb-4">🎯</p>
-          <h2
-            className="text-2xl mb-2"
-            style={{ fontFamily: "'Brice Black', sans-serif" }}
-          >
+          <h2 className="text-2xl mb-2" style={{ fontFamily: "'Brice Black', sans-serif" }}>
             All caught up!
           </h2>
           <p className="text-sm text-black/60 mb-6">
-            {markets.length === 0
-              ? "No open markets right now."
-              : "You've seen all open markets."}
+            {markets.length === 0 ? "No open markets right now." : "You've seen all open markets."}
           </p>
           <div className="flex flex-col gap-3">
             <button
@@ -236,23 +225,24 @@ export default function HomePage() {
 
   const current = markets[index];
 
+  /* ── Swipe view ── */
   return (
     <div
-      className="flex flex-col min-h-screen bg-[#efe7f7]"
-      style={{ fontFamily: "'Brice Regular', sans-serif" }}
+      className="flex flex-col bg-[#efe7f7]"
+      style={{ height: "100dvh", fontFamily: "'Brice Regular', sans-serif" }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-3">
+      <div className="shrink-0 flex items-center justify-between px-5 py-3">
         <h1 className="text-2xl" style={{ fontFamily: "'Brice Black', sans-serif" }}>
           OracleX
         </h1>
-        <span className="text-xs text-black/40 font-brice-regular">
+        <span className="text-xs text-black/40">
           {index + 1} / {markets.length}
         </span>
       </div>
 
-      {/* Swipe area */}
-      <div className="flex-1 relative px-4 pb-2" style={{ minHeight: "65vh" }}>
+      {/* Swipe area — fills all remaining space between header and hint */}
+      <div className="flex-1 min-h-0 relative px-4">
         {current && (
           <SwipeableCard
             key={current.id}
@@ -262,8 +252,8 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Hint */}
-      <div className="text-center pb-28 text-xs text-black/40 font-brice-regular">
+      {/* Hint — sits just above bottom nav */}
+      <div className="shrink-0 text-center py-3 pb-28 text-xs text-black/40">
         ← Skip &nbsp;·&nbsp; Bet →
       </div>
     </div>

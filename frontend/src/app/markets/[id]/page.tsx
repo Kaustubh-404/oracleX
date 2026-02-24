@@ -29,12 +29,22 @@ const OUTCOME_BG: Record<number, string> = {
 interface ChartPoint { t: string; prob: number; }
 
 function ProbChart({ marketId }: { marketId: string }) {
-  const [points, setPoints] = useState<ChartPoint[]>([]);
+  const [points, setPoints]   = useState<ChartPoint[]>([]);
+  const [noTrades, setNoTrades] = useState(false);
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/markets/${marketId}/probability-history`)
       .then((r) => r.json())
-      .then((data: ChartPoint[]) => { if (Array.isArray(data) && data.length > 1) setPoints(data); })
+      .then((data: ChartPoint[]) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        // Need ≥2 points for an area chart — extend to now if only 1 point
+        if (data.length === 1) {
+          setNoTrades(true);
+          setPoints([...data, { t: new Date().toISOString(), prob: data[0].prob }]);
+        } else {
+          setPoints(data);
+        }
+      })
       .catch(() => {});
   }, [marketId]);
 
@@ -48,9 +58,14 @@ function ProbChart({ marketId }: { marketId: string }) {
 
   return (
     <div className="retro-card p-4">
-      <p className="font-bold mb-3" style={{ fontFamily: "'Brice SemiBold', sans-serif" }}>
-        Probability History
-      </p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-bold" style={{ fontFamily: "'Brice SemiBold', sans-serif" }}>
+          Probability History
+        </p>
+        {noTrades && (
+          <span className="text-xs text-black/40 italic">No trades yet</span>
+        )}
+      </div>
       <div className="h-44">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={formatted} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
