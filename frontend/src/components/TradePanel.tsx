@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { isMiniApp, isVerifiedForBet, verifyForBet } from "@/lib/worldid";
 import { prepareContractCall, getContract } from "thirdweb";
 import { useSendTransaction, useActiveAccount, useReadContract } from "thirdweb/react";
 import { client, CHAIN, ORACLEX_ADDRESS, USDC_ADDRESS } from "@/lib/thirdweb";
@@ -23,6 +24,26 @@ export function TradePanel({ marketId, yesPct, noPct, onSuccess }: Props) {
   const [action, setAction]    = useState<Action>("BUY");
   const [side,   setSide]      = useState<Side>("YES");
   const [inputValue, setInput] = useState("10");
+
+  // World ID — only active inside World App
+  const inWorldApp = isMiniApp();
+  const [widVerified, setWidVerified] = useState(false);
+  const [widPending,  setWidPending]  = useState(false);
+  const [widError,    setWidError]    = useState<string | null>(null);
+
+  useEffect(() => {
+    if (inWorldApp) setWidVerified(isVerifiedForBet(marketId.toString()));
+  }, [inWorldApp, marketId]);
+
+  async function handleWorldIDVerify() {
+    setWidPending(true); setWidError(null);
+    try {
+      await verifyForBet(marketId.toString());
+      setWidVerified(true);
+    } catch (e) {
+      setWidError(e instanceof Error ? e.message : "Verification failed");
+    } finally { setWidPending(false); }
+  }
 
   const usdcAmount = parseUSDC(inputValue);
   const price      = side === "YES" ? yesPct / 100 : noPct / 100;
@@ -197,11 +218,27 @@ export function TradePanel({ marketId, yesPct, noPct, onSuccess }: Props) {
         </div>
       )}
 
+      {/* World ID gate — only shown in World App, only for BUY, only until verified */}
+      {inWorldApp && action === "BUY" && !widVerified && (
+        <div className="border-4 border-black rounded-2xl p-3 mb-3 bg-[#d3aeff]/30">
+          <p className="text-xs font-bold mb-0.5">🌍 Human verification required</p>
+          <p className="text-xs text-black/60 mb-2">One unique human · one position per market.</p>
+          <button
+            onClick={handleWorldIDVerify}
+            disabled={widPending}
+            className="retro-btn w-full bg-black text-white py-2 text-xs"
+          >
+            {widPending ? "Verifying…" : "Verify with World ID →"}
+          </button>
+          {widError && <p className="text-xs text-[#ff6961] mt-1">{widError}</p>}
+        </div>
+      )}
+
       {/* CTA */}
       {account ? (
         <button
           onClick={action === "BUY" ? handleBuy : handleSell}
-          disabled={isPending || usdcAmount === 0n || (action === "SELL" && usdcAmount > maxSell)}
+          disabled={isPending || usdcAmount === 0n || (action === "SELL" && usdcAmount > maxSell) || (inWorldApp && action === "BUY" && !widVerified)}
           className={`retro-btn w-full py-3.5 text-sm ${
             action === "BUY"
               ? side === "YES" ? "bg-[#99ff88] text-black" : "bg-[#ff6961] text-white"

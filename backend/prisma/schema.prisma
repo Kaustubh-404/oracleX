@@ -57,3 +57,16 @@ model IndexerState {
 
   @@map("indexer_state")
 }
+
+model WorldIdVerification {
+  id                Int      @id @default(autoincrement())
+  nullifierHash     String
+  action            String
+  marketId          String?  // present for oraclexbet, null for oraclexcreatemarket
+  verificationLevel String
+  createdAt         DateTime @default(now())
+
+  // Same human cannot bet twice on the same market
+  @@unique([nullifierHash, action, marketId])
+  @@map("world_id_verifications")
+}

@@ -7,18 +7,19 @@ const router = Router();
 router.get("/:address", async (req, res) => {
   try {
     const wallet = req.params.address.toLowerCase();
+    const walletFilter = { wallet: { equals: wallet, mode: "insensitive" as const } };
     const page   = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit  = Math.min(200, parseInt(req.query.limit as string) || 50);
 
     const [trades, total] = await Promise.all([
       prisma.trade.findMany({
-        where:   { wallet },
+        where:   walletFilter,
         skip:    (page - 1) * limit,
         take:    limit,
         orderBy: { createdAt: "desc" },
         include: { market: true },
       }),
-      prisma.trade.count({ where: { wallet } }),
+      prisma.trade.count({ where: walletFilter }),
     ]);
 
     // Aggregate net positions per market
@@ -65,7 +66,7 @@ router.get("/:address/brier", async (req, res) => {
 
     // All BUY trades for resolved markets (outcome 1=YES, 2=NO — skip INVALID/unresolved)
     const trades = await prisma.trade.findMany({
-      where:   { wallet, action: "BUY" },
+      where:   { wallet: { equals: wallet, mode: "insensitive" }, action: "BUY" },
       include: { market: true },
     });
 

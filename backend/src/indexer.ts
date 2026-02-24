@@ -62,15 +62,19 @@ export async function startIndexer(io: SocketServer): Promise<void> {
     return;
   }
 
-  // Restore last indexed block from DB — always use max(DB, START_BLOCK env)
+  // Restore last indexed block from DB — resume from where we left off,
+  // but never go earlier than START_BLOCK env var.
   const envStartBlock = BigInt(process.env.START_BLOCK ?? "0");
   const state = await prisma.indexerState.upsert({
     where:  { id: 1 },
     create: { id: 1, lastBlock: envStartBlock },
-    update: { lastBlock: envStartBlock },
+    update: {}, // preserve saved progress across restarts
   });
 
-  let fromBlock = state.lastBlock;
+  // Use max(saved, env) so lowering START_BLOCK takes effect but progress is kept
+  const fromBlock = state.lastBlock > envStartBlock ? state.lastBlock : envStartBlock;
+  // Persist the resolved start block
+  await prisma.indexerState.update({ where: { id: 1 }, data: { lastBlock: fromBlock } });
   console.log(`[Indexer] Starting from block ${fromBlock}`);
 
   // ── Historical catch-up ────────────────────────────────────────────────────
@@ -202,35 +206,42 @@ async function onPositionTaken(
   const { marketId, user, isYes, amount } = log.args;
   const amountDecimal = Number(amount) / 1e6;
 
-  // Upsert trade record
+  // Upsert trade record — skip if market not yet indexed (FK violation)
+  let isNew = false;
   if (log.txHash && log.logIndex !== undefined) {
-    await prisma.trade.upsert({
-      where:  { txHash_logIndex: { txHash: log.txHash, logIndex: log.logIndex } },
-      create: {
-        marketId,
-        wallet:      user,
-        side:        isYes ? "YES" : "NO",
-        usdcAmount:  amountDecimal,
-        action:      "BUY",
-        txHash:      log.txHash,
-        blockNumber: log.blockNumber ?? null,
-        logIndex:    log.logIndex,
-      },
-      update: {},
+    const existing = await prisma.trade.findUnique({
+      where: { txHash_logIndex: { txHash: log.txHash, logIndex: log.logIndex } },
     });
+    if (!existing) {
+      await prisma.trade.create({
+        data: {
+          marketId,
+          wallet:      user,
+          side:        isYes ? "YES" : "NO",
+          usdcAmount:  amountDecimal,
+          action:      "BUY",
+          txHash:      log.txHash,
+          blockNumber: log.blockNumber ?? null,
+          logIndex:    log.logIndex,
+        },
+      });
+      isNew = true;
+    }
   }
 
-  // Update pool balances
-  if (isYes) {
-    await prisma.market.update({
-      where: { id: marketId },
-      data:  { yesPool: { increment: amountDecimal } },
-    });
-  } else {
-    await prisma.market.update({
-      where: { id: marketId },
-      data:  { noPool: { increment: amountDecimal } },
-    });
+  // Only update pool balances for newly indexed trades to avoid double-counting on replay
+  if (isNew) {
+    if (isYes) {
+      await prisma.market.update({
+        where: { id: marketId },
+        data:  { yesPool: { increment: amountDecimal } },
+      });
+    } else {
+      await prisma.market.update({
+        where: { id: marketId },
+        data:  { noPool: { increment: amountDecimal } },
+      });
+    }
   }
 
   io.emit("positionTaken", {
@@ -248,41 +259,48 @@ async function onPositionSold(
   const { marketId, user, isYes, amountIn, proceeds } = log.args;
   const amountDecimal = Number(amountIn) / 1e6;
 
+  let isNew = false;
   if (log.txHash && log.logIndex !== undefined) {
-    await prisma.trade.upsert({
-      where:  { txHash_logIndex: { txHash: log.txHash, logIndex: log.logIndex } },
-      create: {
-        marketId,
-        wallet:      user,
-        side:        isYes ? "YES" : "NO",
-        usdcAmount:  amountDecimal,
-        action:      "SELL",
-        txHash:      log.txHash,
-        blockNumber: log.blockNumber ?? null,
-        logIndex:    log.logIndex,
-      },
-      update: {},
+    const existing = await prisma.trade.findUnique({
+      where: { txHash_logIndex: { txHash: log.txHash, logIndex: log.logIndex } },
     });
+    if (!existing) {
+      await prisma.trade.create({
+        data: {
+          marketId,
+          wallet:      user,
+          side:        isYes ? "YES" : "NO",
+          usdcAmount:  amountDecimal,
+          action:      "SELL",
+          txHash:      log.txHash,
+          blockNumber: log.blockNumber ?? null,
+          logIndex:    log.logIndex,
+        },
+      });
+      isNew = true;
+    }
   }
 
-  // Pool update: position removed + spread redistributed
-  const spread = Number(amountIn - proceeds) / 1e6;
-  if (isYes) {
-    await prisma.market.update({
-      where: { id: marketId },
-      data:  {
-        yesPool: { decrement: amountDecimal },
-        noPool:  { increment: spread },
-      },
-    });
-  } else {
-    await prisma.market.update({
-      where: { id: marketId },
-      data:  {
-        noPool:  { decrement: amountDecimal },
-        yesPool: { increment: spread },
-      },
-    });
+  // Only update pool balances for newly indexed trades to avoid double-counting on replay
+  if (isNew) {
+    const spread = Number(amountIn - proceeds) / 1e6;
+    if (isYes) {
+      await prisma.market.update({
+        where: { id: marketId },
+        data:  {
+          yesPool: { decrement: amountDecimal },
+          noPool:  { increment: spread },
+        },
+      });
+    } else {
+      await prisma.market.update({
+        where: { id: marketId },
+        data:  {
+          noPool:  { decrement: amountDecimal },
+          yesPool: { increment: spread },
+        },
+      });
+    }
   }
 
   io.emit("positionSold", { marketId: marketId.toString(), user, isYes });

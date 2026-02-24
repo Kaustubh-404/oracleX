@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { prepareContractCall, getContract, readContract, sendAndConfirmTransaction } from "thirdweb";
 import { useActiveAccount } from "thirdweb/react";
+import { isMiniApp, isVerifiedForCreate, verifyForCreate } from "@/lib/worldid";
 import { client, CHAIN, ORACLEX_ADDRESS, USDC_ADDRESS } from "@/lib/thirdweb";
 import { ORACLE_X_ABI, USDC_ABI } from "@/abis/OracleX";
 import { parseUSDC } from "@/lib/utils";
@@ -82,8 +83,17 @@ export default function CreatePage() {
 
   async function handleCreate() {
     if (!account || !isValid || isPending) return;
-    setStep("confirm");
     setTxError(null);
+
+    // World ID gate — only inside World App
+    if (isMiniApp() && !isVerifiedForCreate()) {
+      setIsPending(true);
+      try { await verifyForCreate(); }
+      catch (e) { setTxError(e instanceof Error ? e.message : "World ID verification failed"); setIsPending(false); return; }
+      setIsPending(false);
+    }
+
+    setStep("confirm");
     setIsPending(true);
 
     try {

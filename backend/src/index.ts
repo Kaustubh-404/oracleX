@@ -7,6 +7,7 @@ import { Server as SocketServer } from "socket.io";
 import marketsRouter   from "./api/markets";
 import positionsRouter from "./api/positions";
 import aiRouter        from "./api/ai";
+import verifyRouter    from "./api/verify";
 import { startIndexer } from "./indexer";
 
 const PORT = parseInt(process.env.PORT ?? "4000", 10);
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use("/markets",   marketsRouter);
 app.use("/positions", positionsRouter);
 app.use("/ai",        aiRouter);
+app.use("/verify",    verifyRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
