@@ -10,6 +10,9 @@ import { useMarketSocket } from "@/hooks/useSocket";
 import { formatUSDC, formatDate, formatTimeLeft, formatConfidence, CATEGORY_META } from "@/lib/utils";
 import { isMiniApp } from "@/lib/worldid";
 import { getMiniKitAddress } from "@/lib/minikit-wallet";
+import { WORLD_ORACLEX_ADDRESS } from "@/lib/worldchain";
+import { ORACLE_X_ABI } from "@/abis/OracleX";
+import { MiniKit } from "@worldcoin/minikit-js";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import {
@@ -170,14 +173,52 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
     !market.settlementRequested &&
     BigInt(Math.floor(Date.now() / 1000)) >= market.closingTime;
 
-  function handleRequestSettlement() {
-    const tx = prepareContractCall({ contract: activeContract, method: "requestSettlement", params: [marketId] });
-    sendTx(tx, { onSuccess: () => refetch() });
+  const [mkPending, setMkPending] = useState(false);
+  const [mkError,   setMkError]   = useState<string | null>(null);
+  const anyTxPending = txPending || mkPending;
+
+  async function handleRequestSettlement() {
+    if (inWorldApp && chain === "worldchain-sepolia") {
+      setMkPending(true); setMkError(null);
+      try {
+        const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+          transaction: [{
+            address: WORLD_ORACLEX_ADDRESS,
+            abi: ORACLE_X_ABI as unknown as object[],
+            functionName: "requestSettlement",
+            args: [marketId.toString()],
+          }],
+        });
+        if (finalPayload.status === "success") refetch();
+        else setMkError("Transaction rejected");
+      } catch (e) { setMkError(e instanceof Error ? e.message : "Transaction failed"); }
+      finally { setMkPending(false); }
+    } else {
+      const tx = prepareContractCall({ contract: activeContract, method: "requestSettlement", params: [marketId] });
+      sendTx(tx, { onSuccess: () => refetch() });
+    }
   }
 
-  function handleClaimWinnings() {
-    const tx = prepareContractCall({ contract: activeContract, method: "claimWinnings", params: [marketId] });
-    sendTx(tx, { onSuccess: () => refetch() });
+  async function handleClaimWinnings() {
+    if (inWorldApp && chain === "worldchain-sepolia") {
+      setMkPending(true); setMkError(null);
+      try {
+        const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+          transaction: [{
+            address: WORLD_ORACLEX_ADDRESS,
+            abi: ORACLE_X_ABI as unknown as object[],
+            functionName: "claimWinnings",
+            args: [marketId.toString()],
+          }],
+        });
+        if (finalPayload.status === "success") refetch();
+        else setMkError("Transaction rejected");
+      } catch (e) { setMkError(e instanceof Error ? e.message : "Transaction failed"); }
+      finally { setMkPending(false); }
+    } else {
+      const tx = prepareContractCall({ contract: activeContract, method: "claimWinnings", params: [marketId] });
+      sendTx(tx, { onSuccess: () => refetch() });
+    }
   }
 
   return (
@@ -273,10 +314,10 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
             <p className="text-xs text-black/60 mb-3">Trigger AI resolution via Chainlink CRE</p>
             <button
               onClick={handleRequestSettlement}
-              disabled={txPending}
+              disabled={anyTxPending}
               className="retro-btn w-full bg-black text-white py-3 text-sm"
             >
-              {txPending ? "Requesting…" : "Request AI Settlement →"}
+              {anyTxPending ? "Requesting…" : "Request AI Settlement →"}
             </button>
           </div>
         )}
@@ -315,13 +356,17 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
               </div>
               <button
                 onClick={handleClaimWinnings}
-                disabled={txPending}
+                disabled={anyTxPending}
                 className="retro-btn w-full bg-black text-white py-3 text-sm"
               >
-                {txPending ? "Claiming…" : "Claim Winnings 🎉"}
+                {anyTxPending ? "Claiming…" : "Claim Winnings 🎉"}
               </button>
             </div>
           )
+        )}
+
+        {mkError && (
+          <p className="text-xs text-[#ff6961] text-center mt-2">{mkError}</p>
         )}
       </div>
     </div>
