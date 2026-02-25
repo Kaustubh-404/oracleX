@@ -8,7 +8,7 @@ import marketsRouter   from "./api/markets";
 import positionsRouter from "./api/positions";
 import aiRouter        from "./api/ai";
 import verifyRouter    from "./api/verify";
-import { startIndexer } from "./indexer";
+import { startChainIndexer } from "./indexer";
 
 const PORT = parseInt(process.env.PORT ?? "4000", 10);
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:3000";
@@ -59,7 +59,16 @@ server.listen(PORT, () => {
   console.log(`[Server] CORS origin: ${FRONTEND_URL}`);
 });
 
-// Start the on-chain event indexer
-startIndexer(io).catch((err) => {
-  console.error("[Server] Indexer startup error:", err);
-});
+// Start indexer for Ethereum Sepolia
+const SEPOLIA_RPC = process.env.RPC_URL ?? "";
+startChainIndexer("sepolia", process.env.ORACLEX_ADDRESS ?? "", SEPOLIA_RPC, io)
+  .catch((err) => console.error("[Indexer:sepolia] startup error:", err));
+
+// Start indexer for World Chain Sepolia (if configured)
+const WORLD_CONTRACT = process.env.WORLD_ORACLEX_ADDRESS ?? "";
+const WORLD_RPC      = process.env.WORLD_CHAIN_RPC_URL ?? "https://worldchain-sepolia.g.alchemy.com/public";
+const WORLD_START    = BigInt(process.env.WORLD_START_BLOCK ?? "25731000");
+if (WORLD_CONTRACT && WORLD_CONTRACT !== "0x0000000000000000000000000000000000000000") {
+  startChainIndexer("worldchain-sepolia", WORLD_CONTRACT, WORLD_RPC, io, WORLD_START)
+    .catch((err) => console.error("[Indexer:worldchain-sepolia] startup error:", err));
+}

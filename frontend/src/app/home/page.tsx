@@ -12,9 +12,12 @@ import {
 import { Check, X, RefreshCw } from "lucide-react";
 import { formatTimeLeft, CATEGORY_META } from "@/lib/utils";
 import { backendFetch } from "@/lib/api";
+import { isMiniApp } from "@/lib/worldid";
+import { WORLD_CHAIN_SLUG, SEPOLIA_CHAIN_SLUG } from "@/lib/worldchain";
 
 interface Market {
   id: number;
+  chain: string;
   question: string;
   category: string;
   yesPool: string;
@@ -154,7 +157,8 @@ export default function HomePage() {
     setDone(false);
     setIndex(0);
     const now = Math.floor(Date.now() / 1000);
-    backendFetch("/markets")
+    const chain = isMiniApp() ? WORLD_CHAIN_SLUG : SEPOLIA_CHAIN_SLUG;
+    backendFetch(`/markets?chain=${chain}`)
       .then((r) => r.json())
       .then((res: Market[] | { data: Market[] }) => {
         const data = Array.isArray(res) ? res : res.data ?? [];
@@ -172,7 +176,7 @@ export default function HomePage() {
 
   function handleSwipe(dir: "left" | "right") {
     if (dir === "right" && markets[index]) {
-      router.push(`/markets/${markets[index].id}`);
+      router.push(`/markets/${markets[index].id}?chain=${markets[index].chain ?? "sepolia"}`);
     }
     const next = index + 1;
     if (next >= markets.length) setDone(true);

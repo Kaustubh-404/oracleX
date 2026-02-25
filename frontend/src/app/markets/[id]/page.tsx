@@ -1,13 +1,15 @@
 "use client";
 import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useMarket, useOdds, useUserPositions, oracleXContract } from "@/hooks/useMarkets";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMarket, useOdds, useUserPositions, oracleXContract, worldOracleXContract } from "@/hooks/useMarkets";
 import { TradePanel } from "@/components/TradePanel";
 import { AdminResolvePanel } from "@/components/AdminResolvePanel";
 import { useActiveAccount, useSendTransaction, useReadContract } from "thirdweb/react";
 import { prepareContractCall } from "thirdweb";
 import { useMarketSocket } from "@/hooks/useSocket";
 import { formatUSDC, formatDate, formatTimeLeft, formatConfidence, CATEGORY_META } from "@/lib/utils";
+import { isMiniApp } from "@/lib/worldid";
+import { getMiniKitAddress } from "@/lib/minikit-wallet";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import {
@@ -27,12 +29,12 @@ const OUTCOME_BG: Record<number, string> = {
 /* ── Probability history chart ───────────────────────────────────────────── */
 interface ChartPoint { t: string; prob: number; }
 
-function ProbChart({ marketId }: { marketId: string }) {
+function ProbChart({ marketId, chain }: { marketId: string; chain: string }) {
   const [points, setPoints]   = useState<ChartPoint[]>([]);
   const [noTrades, setNoTrades] = useState(false);
 
   useEffect(() => {
-    backendFetch(`/markets/${marketId}/probability-history`)
+    backendFetch(`/markets/${marketId}/probability-history?chain=${chain}`)
       .then((r) => r.json())
       .then((data: ChartPoint[]) => {
         if (!Array.isArray(data) || data.length === 0) return;
@@ -45,7 +47,7 @@ function ProbChart({ marketId }: { marketId: string }) {
         }
       })
       .catch(() => {});
-  }, [marketId]);
+  }, [marketId, chain]);
 
   if (points.length < 2) return null;
 
@@ -117,16 +119,24 @@ function ProbChart({ marketId }: { marketId: string }) {
 
 /* ── Page ────────────────────────────────────────────────────────────────── */
 export default function MarketPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id }    = use(params);
-  const marketId  = BigInt(id);
-  const account   = useActiveAccount();
-  const router    = useRouter();
+  const { id }       = use(params);
+  const marketId     = BigInt(id);
+  const account      = useActiveAccount();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const chain        = searchParams.get("chain") ?? "sepolia";
+  const inWorldApp   = isMiniApp();
 
-  const { data: market, isPending, refetch } = useMarket(marketId);
-  const { data: odds }                       = useOdds(marketId);
-  const { data: positions }                  = useUserPositions(marketId, account?.address);
+  // For World App, use MiniKit address for position reads; for browser use thirdweb account
+  const userAddress = inWorldApp ? (getMiniKitAddress() ?? undefined) : account?.address;
+
+  const { data: market, isPending, refetch } = useMarket(marketId, chain);
+  const { data: odds }                       = useOdds(marketId, chain);
+  const { data: positions }                  = useUserPositions(marketId, userAddress, chain);
   const { mutate: sendTx, isPending: txPending } = useSendTransaction();
-  const { data: ownerAddress }               = useReadContract({ contract: oracleXContract, method: "owner", params: [] });
+
+  const activeContract = chain === "worldchain-sepolia" ? worldOracleXContract : oracleXContract;
+  const { data: ownerAddress } = useReadContract({ contract: activeContract, method: "owner", params: [] });
 
   const isOwner = !!(account && ownerAddress &&
     account.address.toLowerCase() === (ownerAddress as string).toLowerCase());
@@ -135,9 +145,10 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
   useEffect(() => { if (liveUpdate) refetch(); }, [liveUpdate, refetch]);
 
   useEffect(() => {
+    if (inWorldApp) return; // World App users don't have thirdweb accounts
     if (account === undefined) return;
     if (!account) router.replace("/");
-  }, [account, router]);
+  }, [account, router, inWorldApp]);
 
   if (isPending) {
     return (
@@ -160,12 +171,12 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
     BigInt(Math.floor(Date.now() / 1000)) >= market.closingTime;
 
   function handleRequestSettlement() {
-    const tx = prepareContractCall({ contract: oracleXContract, method: "requestSettlement", params: [marketId] });
+    const tx = prepareContractCall({ contract: activeContract, method: "requestSettlement", params: [marketId] });
     sendTx(tx, { onSuccess: () => refetch() });
   }
 
   function handleClaimWinnings() {
-    const tx = prepareContractCall({ contract: oracleXContract, method: "claimWinnings", params: [marketId] });
+    const tx = prepareContractCall({ contract: activeContract, method: "claimWinnings", params: [marketId] });
     sendTx(tx, { onSuccess: () => refetch() });
   }
 
@@ -213,7 +224,7 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
         </div>
 
         {/* Probability history chart */}
-        <ProbChart marketId={id} />
+        <ProbChart marketId={id} chain={chain} />
 
         {/* AI Resolution result */}
         {!isOpen && market.aiConfidenceBps > 0n && (
@@ -283,7 +294,7 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
 
         {/* Trade or Claim */}
         {isOpen ? (
-          <TradePanel marketId={marketId} yesPct={yesPct} noPct={noPct} onSuccess={() => refetch()} />
+          <TradePanel marketId={marketId} yesPct={yesPct} noPct={noPct} chain={chain} onSuccess={() => refetch()} />
         ) : (
           positions && (positions[0] > 0n || positions[1] > 0n) && (
             <div className="retro-card p-4">

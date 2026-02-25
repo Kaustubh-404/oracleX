@@ -5,12 +5,15 @@ import { prepareContractCall, getContract, readContract, sendAndConfirmTransacti
 import { useActiveAccount } from "thirdweb/react";
 import { isMiniApp, isVerifiedForCreate, verifyForCreate } from "@/lib/worldid";
 import { client, CHAIN, ORACLEX_ADDRESS, USDC_ADDRESS } from "@/lib/thirdweb";
+import { WORLD_ORACLEX_ADDRESS, WORLD_USDC_ADDRESS } from "@/lib/worldchain";
 import { ORACLE_X_ABI, USDC_ABI } from "@/abis/OracleX";
 import { parseUSDC } from "@/lib/utils";
 import { Sparkles } from "lucide-react";
 import { backendFetch } from "@/lib/api";
+import { MiniKit } from "@worldcoin/minikit-js";
 const oracleXContract = getContract({ client, chain: CHAIN, address: ORACLEX_ADDRESS, abi: ORACLE_X_ABI });
 const usdcContract    = getContract({ client, chain: CHAIN, address: USDC_ADDRESS,   abi: USDC_ABI    });
+const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
 const CATEGORIES = ["crypto", "sports", "tech", "news"] as const;
 type Category = typeof CATEGORIES[number];
@@ -40,6 +43,7 @@ interface AiSuggestion { resolutionSource: string; resolutionCriteria: string; s
 export default function CreatePage() {
   const router  = useRouter();
   const account = useActiveAccount();
+  const inWorldApp = isMiniApp();
   const [isPending, setIsPending] = useState(false);
   const [txError,   setTxError]  = useState<string | null>(null);
 
@@ -54,9 +58,10 @@ export default function CreatePage() {
   const [resolutionSource, setResSrc] = useState("");
 
   useEffect(() => {
+    if (inWorldApp) return; // World App users browse without thirdweb account
     if (account === undefined) return;
     if (!account) router.replace("/");
-  }, [account, router]);
+  }, [account, router, inWorldApp]);
 
   const liquidity   = parseUSDC(liquidityStr);
   const closingTime = BigInt(Math.floor(Date.now() / 1000) + durationSec);
@@ -147,6 +152,60 @@ export default function CreatePage() {
         </div>
       </div>
     );
+  }
+
+  async function handleWorldChainCreate() {
+    if (!isValid || isPending) return;
+    setTxError(null);
+
+    // World ID gate
+    if (!isVerifiedForCreate()) {
+      setIsPending(true);
+      try { await verifyForCreate(); }
+      catch (e) { setTxError(e instanceof Error ? e.message : "World ID verification failed"); setIsPending(false); return; }
+      setIsPending(false);
+    }
+
+    setStep("confirm");
+    setIsPending(true);
+    try {
+      const resolSource = resolutionSource || CAT_SOURCE[category];
+      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+        transaction: [
+          {
+            address: WORLD_USDC_ADDRESS,
+            abi: USDC_ABI as unknown as object[],
+            functionName: "approve",
+            args: [WORLD_ORACLEX_ADDRESS, MAX_UINT256],
+          },
+          {
+            address: WORLD_ORACLEX_ADDRESS,
+            abi: ORACLE_X_ABI as unknown as object[],
+            functionName: "createMarket",
+            args: [
+              question.trim(),
+              category,
+              resolSource,
+              closingTime.toString(),
+              (closingTime + BigInt(7 * 86400)).toString(),
+              WORLD_USDC_ADDRESS,
+              liquidity.toString(),
+            ],
+          },
+        ],
+      });
+      if (finalPayload.status === "success") {
+        setStep("done");
+      } else {
+        setStep("form");
+        setTxError("Transaction rejected");
+      }
+    } catch (e) {
+      setStep("form");
+      setTxError(e instanceof Error ? e.message : "Transaction failed");
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (
@@ -271,7 +330,20 @@ export default function CreatePage() {
         </div>
 
         {/* Submit */}
-        {account ? (
+        {inWorldApp ? (
+          <>
+            <div className="flex items-center gap-2 px-3 py-2 bg-[#d3aeff]/20 border-2 border-[#d3aeff] rounded-xl">
+              <span className="text-xs font-bold">🌐 Creating on World Chain Sepolia</span>
+            </div>
+            <button
+              onClick={handleWorldChainCreate}
+              disabled={!isValid || isPending}
+              className="retro-btn w-full bg-black text-white py-4 text-base"
+            >
+              {isPending ? "Processing…" : `Create Market · Seed $${liquidityStr}`}
+            </button>
+          </>
+        ) : account ? (
           <button
             onClick={handleCreate}
             disabled={!isValid || isPending}

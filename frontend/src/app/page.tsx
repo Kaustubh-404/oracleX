@@ -5,19 +5,42 @@ import { useActiveAccount } from "thirdweb/react";
 import { ConnectButton } from "thirdweb/react";
 import { client, CHAIN } from "@/lib/thirdweb";
 import { isMiniApp } from "@/lib/worldid";
+import { MiniKit } from "@worldcoin/minikit-js";
+import { generateNonce, setMiniKitAddress } from "@/lib/minikit-wallet";
 
 export default function LandingPage() {
-  const account    = useActiveAccount();
-  const router     = useRouter();
-  const [inWorld, setInWorld] = useState(false);
+  const account  = useActiveAccount();
+  const router   = useRouter();
+  const [inWorld,  setInWorld]  = useState(false);
+  const [authState, setAuthState] = useState<"idle" | "pending" | "error">("idle");
 
   useEffect(() => {
     setInWorld(isMiniApp());
   }, []);
 
+  // Browser: redirect on wallet connect
   useEffect(() => {
-    if (account) router.replace("/home");
-  }, [account, router]);
+    if (!inWorld && account) router.replace("/home");
+  }, [account, inWorld, router]);
+
+  async function handleWorldAuth() {
+    setAuthState("pending");
+    try {
+      const { finalPayload } = await MiniKit.commandsAsync.walletAuth({
+        nonce:          generateNonce(),
+        statement:      "Sign in to OracleX",
+        expirationTime: new Date(Date.now() + 10 * 60 * 1000),
+      });
+      if (finalPayload.status === "success") {
+        setMiniKitAddress(finalPayload.address);
+        router.replace("/home");
+      } else {
+        setAuthState("error");
+      }
+    } catch {
+      setAuthState("error");
+    }
+  }
 
   return (
     <div
@@ -26,29 +49,17 @@ export default function LandingPage() {
     >
       {/* ── Decorative assets ──────────────────────────── */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/starsquare.png"
-        alt=""
-        className="absolute w-[18vw] h-[18vh] top-6 left-28 object-contain pointer-events-none select-none"
-      />
+      <img src="/starsquare.png" alt=""
+        className="absolute w-[18vw] h-[18vh] top-6 left-28 object-contain pointer-events-none select-none" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/star2.png"
-        alt=""
-        className="absolute w-[14vw] h-[18vh] top-28 left-8 object-contain rotate-[40deg] pointer-events-none select-none"
-      />
+      <img src="/star2.png" alt=""
+        className="absolute w-[14vw] h-[18vh] top-28 left-8 object-contain rotate-[40deg] pointer-events-none select-none" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/flower.png"
-        alt=""
-        className="absolute w-[38vw] h-[42vh] top-20 left-28 object-contain pointer-events-none select-none"
-      />
+      <img src="/flower.png" alt=""
+        className="absolute w-[38vw] h-[42vh] top-20 left-28 object-contain pointer-events-none select-none" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/star3.png"
-        alt=""
-        className="absolute w-[40vw] h-[38vh] top-4 right-6 object-contain pointer-events-none select-none"
-      />
+      <img src="/star3.png" alt=""
+        className="absolute w-[40vw] h-[38vh] top-4 right-6 object-contain pointer-events-none select-none" />
 
       {/* ── Headline ───────────────────────────────────── */}
       <div className="relative z-10">
@@ -68,24 +79,28 @@ export default function LandingPage() {
         </p>
       </div>
 
-      {/* ── Connect Wallet / Enter App ─────────────────── */}
+      {/* ── Sign in ────────────────────────────────────── */}
       <div className="relative z-10">
         {inWorld ? (
-          <button
-            onClick={() => router.replace("/home")}
-            className="retro-btn bg-black text-white px-6 py-3 text-base"
-          >
-            Enter App →
-          </button>
+          <div>
+            <button
+              onClick={handleWorldAuth}
+              disabled={authState === "pending"}
+              className="retro-btn bg-black text-white px-6 py-3 text-base w-full"
+              style={{ fontFamily: "'Brice SemiBold', sans-serif" }}
+            >
+              {authState === "pending" ? "Signing in…" : "Sign in with World App"}
+            </button>
+            {authState === "error" && (
+              <p className="text-xs text-red-700 mt-2 text-center">Sign-in failed. Please try again.</p>
+            )}
+          </div>
         ) : (
           <div className="bg-black w-fit rounded-xl overflow-hidden">
             <ConnectButton
               client={client}
               chain={CHAIN}
-              appMetadata={{
-                name: "OracleX",
-                description: "AI-powered prediction markets",
-              }}
+              appMetadata={{ name: "OracleX", description: "AI-powered prediction markets" }}
               connectButton={{ label: "Connect Wallet" }}
             />
           </div>

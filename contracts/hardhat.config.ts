@@ -31,6 +31,11 @@ const config: HardhatUserConfig = {
       accounts: [PRIVATE_KEY],
       chainId: 84532,
     },
+    "worldchain-sepolia": {
+      url: "https://worldchain-sepolia.g.alchemy.com/public",
+      accounts: [PRIVATE_KEY],
+      chainId: 4801,
+    },
   },
   etherscan: {
     apiKey: {

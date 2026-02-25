@@ -3,17 +3,18 @@ import { prisma } from "../db";
 
 const router = Router();
 
-// GET /markets?category=Sports&status=open&page=1&limit=20
+// GET /markets?category=Sports&status=open&chain=sepolia&page=1&limit=20
 router.get("/", async (req, res) => {
   try {
     const page     = Math.max(1, parseInt(req.query.page  as string) || 1);
     const limit    = Math.min(100, parseInt(req.query.limit as string) || 20);
     const category = req.query.category as string | undefined;
     const status   = req.query.status   as string | undefined;
+    const chain    = (req.query.chain   as string) || "sepolia";
 
     const now = new Date();
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { chain };
     if (category) where.category = category;
     if (status === "open")     { where.outcome = 0; where.closingTime = { gt: now }; }
     if (status === "closed")   { where.outcome = 0; where.closingTime = { lte: now }; }
@@ -42,12 +43,13 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /markets/:id
+// GET /markets/:id?chain=sepolia
 router.get("/:id", async (req, res) => {
   try {
-    const id = BigInt(req.params.id);
+    const id    = BigInt(req.params.id);
+    const chain = (req.query.chain as string) || "sepolia";
     const market = await prisma.market.findUnique({
-      where:   { id },
+      where:   { id_chain: { id, chain } },
       include: { trades: { orderBy: { createdAt: "desc" }, take: 50 } },
     });
 
@@ -60,21 +62,23 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// GET /markets/:id/trades
+// GET /markets/:id/trades?chain=sepolia
 router.get("/:id/trades", async (req, res) => {
   try {
-    const marketId = BigInt(req.params.id);
-    const page     = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit    = Math.min(200, parseInt(req.query.limit as string) || 50);
+    const marketId    = BigInt(req.params.id);
+    const marketChain = (req.query.chain as string) || "sepolia";
+    const page        = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit       = Math.min(200, parseInt(req.query.limit as string) || 50);
+    const tradeWhere  = { marketId, marketChain };
 
     const [trades, total] = await Promise.all([
       prisma.trade.findMany({
-        where:   { marketId },
+        where:   tradeWhere,
         skip:    (page - 1) * limit,
         take:    limit,
         orderBy: { createdAt: "desc" },
       }),
-      prisma.trade.count({ where: { marketId } }),
+      prisma.trade.count({ where: tradeWhere }),
     ]);
 
     res.json({
@@ -87,18 +91,19 @@ router.get("/:id/trades", async (req, res) => {
   }
 });
 
-// GET /markets/:id/probability-history
+// GET /markets/:id/probability-history?chain=sepolia
 // Returns synthetic probability history derived from trade sequence
 router.get("/:id/probability-history", async (req, res) => {
   try {
-    const marketId = BigInt(req.params.id);
+    const marketId    = BigInt(req.params.id);
+    const marketChain = (req.query.chain as string) || "sepolia";
 
     const trades = await prisma.trade.findMany({
-      where:   { marketId },
+      where:   { marketId, marketChain },
       orderBy: { createdAt: "asc" },
     });
 
-    const market = await prisma.market.findUnique({ where: { id: marketId } });
+    const market = await prisma.market.findUnique({ where: { id_chain: { id: marketId, chain: marketChain } } });
     if (!market) return res.status(404).json({ error: "Market not found" });
 
     // Replay trades to build probability series

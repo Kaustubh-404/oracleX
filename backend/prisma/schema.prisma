@@ -9,7 +9,8 @@ datasource db {
 }
 
 model Market {
-  id                  BigInt   @id
+  id                  BigInt   // on-chain market ID
+  chain               String   @default("sepolia")
   question            String
   category            String
   resolutionSource    String
@@ -28,31 +29,33 @@ model Market {
 
   trades  Trade[]
 
+  @@id([id, chain])
   @@map("markets")
 }
 
 model Trade {
-  id          Int      @id @default(autoincrement())
-  marketId    BigInt
-  wallet      String
-  side        String   // "YES" | "NO"
-  usdcAmount  Decimal  @db.Decimal(30, 6)
-  action      String   // "BUY" | "SELL"
-  txHash      String?
-  blockNumber BigInt?
-  logIndex    Int?
-  createdAt   DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  marketId     BigInt
+  marketChain  String   @default("sepolia")
+  wallet       String
+  side         String   // "YES" | "NO"
+  usdcAmount   Decimal  @db.Decimal(30, 6)
+  action       String   // "BUY" | "SELL"
+  txHash       String?
+  blockNumber  BigInt?
+  logIndex     Int?
+  createdAt    DateTime @default(now())
 
-  market Market @relation(fields: [marketId], references: [id])
+  market Market @relation(fields: [marketId, marketChain], references: [id, chain])
 
   @@unique([txHash, logIndex])
-  @@index([marketId])
+  @@index([marketId, marketChain])
   @@index([wallet])
   @@map("trades")
 }
 
 model IndexerState {
-  id        Int    @id @default(1)
+  chain     String @id   // "sepolia" | "worldchain-sepolia"
   lastBlock BigInt @default(0)
 
   @@map("indexer_state")

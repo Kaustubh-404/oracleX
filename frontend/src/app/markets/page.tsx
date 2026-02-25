@@ -5,9 +5,12 @@ import { useActiveAccount } from "thirdweb/react";
 import Link from "next/link";
 import { formatTimeLeft, CATEGORY_META, OUTCOME_LABEL } from "@/lib/utils";
 import { backendFetch } from "@/lib/api";
+import { isMiniApp } from "@/lib/worldid";
+import { WORLD_CHAIN_SLUG, SEPOLIA_CHAIN_SLUG } from "@/lib/worldchain";
 
 interface Market {
   id: number;
+  chain: string;
   question: string;
   category: string;
   yesPool: string;
@@ -45,7 +48,7 @@ function MarketCard({ m }: { m: Market }) {
   })();
 
   return (
-    <Link href={`/markets/${m.id}`}>
+    <Link href={`/markets/${m.id}?chain=${m.chain ?? "sepolia"}`}>
       <div className="retro-card p-4 cursor-pointer active:scale-[0.98] transition-transform">
         {/* Top row */}
         <div className="flex items-center justify-between mb-2">
@@ -110,7 +113,8 @@ export default function MarketsPage() {
   }, [account, router]);
 
   useEffect(() => {
-    backendFetch("/markets")
+    const chain = isMiniApp() ? WORLD_CHAIN_SLUG : SEPOLIA_CHAIN_SLUG;
+    backendFetch(`/markets?chain=${chain}`)
       .then((r) => r.json())
       .then((res: Market[] | { data: Market[] }) => {
         const data = Array.isArray(res) ? res : res.data;
