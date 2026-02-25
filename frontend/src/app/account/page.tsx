@@ -6,8 +6,10 @@ import { client, CHAIN, USDC_ADDRESS } from "@/lib/thirdweb";
 import { USDC_ABI } from "@/abis/OracleX";
 import { getContract } from "thirdweb";
 import Link from "next/link";
-import { Trophy, ChartBarBig, Copy, CheckCheck, Wallet } from "lucide-react";
+import { Trophy, ChartBarBig, Copy, CheckCheck, Wallet, LogOut } from "lucide-react";
 import { backendFetch } from "@/lib/api";
+import { isMiniApp } from "@/lib/worldid";
+import { getMiniKitAddress, clearMiniKitAddress } from "@/lib/minikit-wallet";
 const usdcContract = getContract({ client, chain: CHAIN, address: USDC_ADDRESS, abi: USDC_ABI });
 
 interface Stats { totalVolume: string; tradeCount: number; }
@@ -23,21 +25,33 @@ export default function AccountPage() {
   const [copied, setCopied] = useState(false);
   const [stats,  setStats]  = useState<Stats | null>(null);
 
+  const inWorldApp = isMiniApp();
+  const miniKitAddr = inWorldApp ? getMiniKitAddress() : null;
+
+  // The effective address: MiniKit in World App, thirdweb in browser
+  const walletAddress = inWorldApp ? miniKitAddr : account?.address;
+
   useEffect(() => {
+    if (inWorldApp) {
+      if (!miniKitAddr) router.replace("/");
+      return;
+    }
     if (account === undefined) return;
     if (!account) router.replace("/");
-  }, [account, router]);
+  }, [account, router, inWorldApp, miniKitAddr]);
 
+  // USDC balance — only for browser (thirdweb)
   const { data: usdcRaw } = useReadContract({
     contract: usdcContract,
     method:   "balanceOf",
     params:   [account?.address ?? "0x0000000000000000000000000000000000000000" as `0x${string}`],
+    queryOptions: { enabled: !inWorldApp && !!account },
   });
   const usdcBalance = usdcRaw ? (Number(usdcRaw) / 1e6).toFixed(2) : "—";
 
   useEffect(() => {
-    if (!account) return;
-    backendFetch(`/positions/${account.address}`)
+    if (!walletAddress) return;
+    backendFetch(`/positions/${walletAddress}`)
       .then((r) => r.json())
       .then((data) => {
         const trades: { amount: string }[] = Array.isArray(data) ? data : data.trades ?? data.data ?? [];
@@ -45,11 +59,11 @@ export default function AccountPage() {
         setStats({ totalVolume: vol.toFixed(2), tradeCount: trades.length });
       })
       .catch(() => setStats(null));
-  }, [account]);
+  }, [walletAddress]);
 
   function copyAddress() {
-    if (!account) return;
-    navigator.clipboard.writeText(account.address);
+    if (!walletAddress) return;
+    navigator.clipboard.writeText(walletAddress);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -58,7 +72,13 @@ export default function AccountPage() {
     detailsModal.open({ client, theme: "light" });
   }
 
-  const avatarHue = account ? parseInt(account.address.slice(2, 8), 16) % 360 : 0;
+  function handleWorldAppSignOut() {
+    clearMiniKitAddress();
+    router.replace("/");
+  }
+
+  const displayAddr = walletAddress ?? "";
+  const avatarHue = displayAddr ? parseInt(displayAddr.slice(2, 8), 16) % 360 : 0;
 
   return (
     <div
@@ -76,14 +96,14 @@ export default function AccountPage() {
           className="w-16 h-16 rounded-2xl border-4 border-black mb-3 flex items-center justify-center font-bold text-2xl select-none"
           style={{ background: `hsl(${avatarHue}, 65%, 72%)` }}
         >
-          {account?.address.slice(2, 4).toUpperCase() ?? "??"}
+          {displayAddr ? displayAddr.slice(2, 4).toUpperCase() : "??"}
         </div>
 
         {/* Address + copy */}
-        {account && (
+        {displayAddr && (
           <div className="flex items-center gap-2 mb-4">
             <span className="font-bold text-sm" style={{ fontFamily: "'Brice SemiBold', sans-serif" }}>
-              {shortAddr(account.address)}
+              {shortAddr(displayAddr)}
             </span>
             <button
               onClick={copyAddress}
@@ -99,30 +119,58 @@ export default function AccountPage() {
 
         {/* Balances */}
         <div className="grid grid-cols-2 gap-3 mb-5">
-          <div className="border-4 border-black rounded-2xl p-3 bg-[#99ff88] min-w-0">
-            <p className="text-xs text-black/60 mb-0.5">USDC Balance</p>
-            <p className="text-base font-bold leading-tight truncate" style={{ fontFamily: "'Brice Black', sans-serif" }}>
-              ${usdcBalance}
-            </p>
-          </div>
+          {inWorldApp ? (
+            <div className="border-4 border-black rounded-2xl p-3 bg-[#99ff88] min-w-0">
+              <p className="text-xs text-black/60 mb-0.5">Wallet</p>
+              <p className="text-sm font-bold leading-tight" style={{ fontFamily: "'Brice SemiBold', sans-serif" }}>
+                World App
+              </p>
+            </div>
+          ) : (
+            <div className="border-4 border-black rounded-2xl p-3 bg-[#99ff88] min-w-0">
+              <p className="text-xs text-black/60 mb-0.5">USDC Balance</p>
+              <p className="text-base font-bold leading-tight truncate" style={{ fontFamily: "'Brice Black', sans-serif" }}>
+                ${usdcBalance}
+              </p>
+            </div>
+          )}
           <div className="border-4 border-black rounded-2xl p-3 bg-[#d3aeff]">
             <p className="text-xs text-black/60 mb-0.5">Network</p>
-            <p className="text-sm font-bold" style={{ fontFamily: "'Brice SemiBold', sans-serif" }}>Sepolia</p>
+            <p className="text-sm font-bold" style={{ fontFamily: "'Brice SemiBold', sans-serif" }}>
+              {inWorldApp ? "World Chain" : "Sepolia"}
+            </p>
             <p className="text-xs text-black/50">Testnet</p>
           </div>
         </div>
 
-        {/* Manage Wallet — opens thirdweb's modal programmatically (no nested button bug) */}
-        <button
-          onClick={openWalletModal}
-          className="retro-btn w-full bg-black text-white py-3 flex items-center justify-center gap-2 text-sm"
-        >
-          <Wallet size={16} strokeWidth={2.5} />
-          Manage Wallet
-        </button>
-        <p className="text-xs text-black/40 text-center mt-2">
-          Switch wallet · Disconnect · Settings
-        </p>
+        {/* Wallet management */}
+        {inWorldApp ? (
+          <>
+            <button
+              onClick={handleWorldAppSignOut}
+              className="retro-btn w-full bg-black text-white py-3 flex items-center justify-center gap-2 text-sm"
+            >
+              <LogOut size={16} strokeWidth={2.5} />
+              Sign Out
+            </button>
+            <p className="text-xs text-black/40 text-center mt-2">
+              Signed in via World App
+            </p>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={openWalletModal}
+              className="retro-btn w-full bg-black text-white py-3 flex items-center justify-center gap-2 text-sm"
+            >
+              <Wallet size={16} strokeWidth={2.5} />
+              Manage Wallet
+            </button>
+            <p className="text-xs text-black/40 text-center mt-2">
+              Switch wallet · Disconnect · Settings
+            </p>
+          </>
+        )}
       </div>
 
       {/* Stats */}
