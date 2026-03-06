@@ -111,7 +111,7 @@ export default function LandingPage() {
       <p className="relative z-10 text-xs text-black/50">
         Powered by Chainlink CRE · Sepolia Testnet
       </p>
-      <p className="relative z-10 text-[10px] text-black/30 -mt-6">v1.2.1</p>
+      <p className="relative z-10 text-[10px] text-black/30 -mt-6">v1.2.2</p>
     </div>
   );
 }

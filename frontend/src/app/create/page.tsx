@@ -143,6 +143,7 @@ export default function CreatePage() {
           <p className="text-6xl mb-4">🎉</p>
           <h2 className="text-2xl mb-2" style={{ fontFamily: "'Brice Black', sans-serif" }}>Market Created!</h2>
           <p className="text-sm text-black/60 mb-6">Your prediction market is live on-chain.</p>
+          {txError && <p className="text-xs text-black/50 mb-4 break-all font-mono bg-black/5 p-2 rounded-lg">{txError}</p>}
           <div className="flex flex-col gap-3">
             <button onClick={() => router.push("/markets")} className="retro-btn bg-black text-white py-3 w-full">View Markets →</button>
             <button onClick={() => { setStep("form"); setQuestion(""); setAiSugg(null); }} className="retro-btn bg-white py-3 w-full">Create Another</button>
