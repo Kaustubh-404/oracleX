@@ -84,32 +84,20 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
 
   // ── MiniKit World Chain trading ──────────────────────────────────────────
 
-  const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
-
   async function handleWorldChainBuy() {
     if (!inWorldApp || !isWorldChain || usdcAmount === 0n) return;
     setMkPending(true); setMkError(null);
     try {
-      // Step 1: Approve USDC spending
-      const approveResult = await MiniKit.commandsAsync.sendTransaction({
+      // Batch approve + buy in a single sendTransaction so World App
+      // executes them atomically (approve is effective for buy in same batch).
+      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
           {
             address: WORLD_USDC_ADDRESS,
             abi: USDC_ABI as unknown as object[],
             functionName: "approve",
-            args: [WORLD_ORACLEX_ADDRESS, MAX_UINT256],
+            args: [WORLD_ORACLEX_ADDRESS, usdcAmount.toString()],
           },
-        ],
-      });
-      if (approveResult.finalPayload.status !== "success") {
-        setMkError("Approval rejected");
-        setMkPending(false);
-        return;
-      }
-
-      // Step 2: Buy (separate tx so approve is confirmed)
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [
           {
             address: WORLD_ORACLEX_ADDRESS,
             abi: ORACLE_X_ABI as unknown as object[],

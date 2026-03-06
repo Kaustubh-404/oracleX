@@ -13,9 +13,6 @@ import { backendFetch } from "@/lib/api";
 import { MiniKit } from "@worldcoin/minikit-js";
 const oracleXContract = getContract({ client, chain: CHAIN, address: ORACLEX_ADDRESS, abi: ORACLE_X_ABI });
 const usdcContract    = getContract({ client, chain: CHAIN, address: USDC_ADDRESS,   abi: USDC_ABI    });
-// Decimal representation for MiniKit args (hex may not be parsed correctly)
-const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
-
 const CATEGORIES = ["crypto", "sports", "tech", "news"] as const;
 type Category = typeof CATEGORIES[number];
 
@@ -170,32 +167,21 @@ export default function CreatePage() {
     setStep("confirm");
     setIsPending(true);
     try {
-      // Step 1: Approve USDC spending
-      const approveResult = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [
-          {
-            address: WORLD_USDC_ADDRESS,
-            abi: USDC_ABI as unknown as object[],
-            functionName: "approve",
-            args: [WORLD_ORACLEX_ADDRESS, MAX_UINT256],
-          },
-        ],
-      });
-      if (approveResult.finalPayload.status !== "success") {
-        setStep("form");
-        setTxError("Approval rejected");
-        setIsPending(false);
-        return;
-      }
-
-      // Step 2: Create market (separate tx so approve is confirmed first)
       const resolSource = resolutionSource || CAT_SOURCE[category];
       const ct = closingTime.toString();
       const sd = (closingTime + BigInt(7 * 86400)).toString();
       const liq = liquidity.toString();
 
+      // Batch approve + createMarket in a single sendTransaction so World App
+      // executes them atomically (approve must be mined before createMarket).
       const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
+          {
+            address: WORLD_USDC_ADDRESS,
+            abi: USDC_ABI as unknown as object[],
+            functionName: "approve",
+            args: [WORLD_ORACLEX_ADDRESS, liq],
+          },
           {
             address: WORLD_ORACLEX_ADDRESS,
             abi: ORACLE_X_ABI as unknown as object[],
