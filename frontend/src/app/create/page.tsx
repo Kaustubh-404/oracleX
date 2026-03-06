@@ -173,7 +173,7 @@ export default function CreatePage() {
       const liq = liquidity.toString();
 
       // No approve needed — MockUSDCWorld auto-approves the OracleX contract
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+      const { commandPayload, finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
           {
             address: WORLD_ORACLEX_ADDRESS,
@@ -183,11 +183,14 @@ export default function CreatePage() {
           },
         ],
       });
+      console.log("[MiniKit] commandPayload:", JSON.stringify(commandPayload));
+      console.log("[MiniKit] finalPayload:", JSON.stringify(finalPayload));
       if (finalPayload.status === "success") {
         setStep("done");
+        setTxError(`TX: ${(finalPayload as Record<string, unknown>).transaction_id ?? (finalPayload as Record<string, unknown>).transactionId ?? "check console"}`);
       } else {
         setStep("form");
-        setTxError("Transaction rejected");
+        setTxError(`Rejected: ${JSON.stringify(finalPayload)}`);
       }
     } catch (e) {
       setStep("form");
