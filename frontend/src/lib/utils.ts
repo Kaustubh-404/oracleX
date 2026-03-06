@@ -18,6 +18,22 @@ export function parseUSDC(dollars: string): bigint {
   return BigInt(Math.round(num * 1e6));
 }
 
+// Parse token string → WLD bigint (18 decimals)
+export function parseWLD(amount: string): bigint {
+  const num = parseFloat(amount);
+  if (isNaN(num) || num < 0) return 0n;
+  // Use string manipulation to avoid floating point precision issues
+  const [whole, frac = ""] = amount.split(".");
+  const padded = (frac + "000000000000000000").slice(0, 18);
+  return BigInt(whole || "0") * 10n ** 18n + BigInt(padded);
+}
+
+// Format WLD (18 decimals) → "1,234.56 WLD"
+export function formatWLD(raw: bigint): string {
+  const value = Number(raw) / 1e18;
+  return value.toFixed(2) + " WLD";
+}
+
 // Unix timestamp → "3h 22m left" or "Closed"
 export function formatTimeLeft(closingTime: bigint): string {
   const ms = Number(closingTime) * 1000;
