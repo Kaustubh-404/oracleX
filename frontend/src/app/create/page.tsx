@@ -5,9 +5,9 @@ import { prepareContractCall, getContract, readContract, sendAndConfirmTransacti
 import { useActiveAccount } from "thirdweb/react";
 import { isMiniApp, isVerifiedForCreate, verifyForCreate } from "@/lib/worldid";
 import { client, CHAIN, ORACLEX_ADDRESS, USDC_ADDRESS } from "@/lib/thirdweb";
-import { WORLD_ORACLEX_ADDRESS, WORLD_WLD_ADDRESS } from "@/lib/worldchain";
-import { ORACLE_X_ABI, USDC_ABI, WLD_ABI } from "@/abis/OracleX";
-import { parseUSDC, parseWLD } from "@/lib/utils";
+import { WORLD_ORACLEX_ADDRESS, WORLD_USDC_ADDRESS } from "@/lib/worldchain";
+import { ORACLE_X_ABI, USDC_ABI } from "@/abis/OracleX";
+import { parseUSDC } from "@/lib/utils";
 import { Sparkles } from "lucide-react";
 import { backendFetch } from "@/lib/api";
 import { MiniKit } from "@worldcoin/minikit-js";
@@ -61,10 +61,9 @@ export default function CreatePage() {
     if (!account) router.replace("/");
   }, [account, router, inWorldApp]);
 
-  const liquidity    = inWorldApp ? parseWLD(liquidityStr) : parseUSDC(liquidityStr);
-  const closingTime  = BigInt(Math.floor(Date.now() / 1000) + durationSec);
-  const isValid      = question.trim().length >= 10 && liquidity > 0n;
-  const tokenSymbol  = inWorldApp ? "WLD" : "USDC";
+  const liquidity   = parseUSDC(liquidityStr);
+  const closingTime = BigInt(Math.floor(Date.now() / 1000) + durationSec);
+  const isValid     = question.trim().length >= 10 && liquidity > 0n;
 
   async function handleAiGenerate() {
     if (!question.trim()) return;
@@ -173,21 +172,14 @@ export default function CreatePage() {
       const sd = (closingTime + BigInt(7 * 86400)).toString();
       const liq = liquidity.toString();
 
-      // Batch approve + createMarket in a single sendTransaction so World App
-      // executes them atomically (approve must be mined before createMarket).
+      // No approve needed — MockUSDCWorld auto-approves the OracleX contract
       const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
-          {
-            address: WORLD_WLD_ADDRESS,
-            abi: WLD_ABI as unknown as object[],
-            functionName: "approve",
-            args: [WORLD_ORACLEX_ADDRESS, liq],
-          },
           {
             address: WORLD_ORACLEX_ADDRESS,
             abi: ORACLE_X_ABI as unknown as object[],
             functionName: "createMarket",
-            args: [question.trim(), category, resolSource, ct, sd, WORLD_WLD_ADDRESS, liq],
+            args: [question.trim(), category, resolSource, ct, sd, WORLD_USDC_ADDRESS, liq],
           },
         ],
       });
@@ -301,17 +293,17 @@ export default function CreatePage() {
           </p>
           <p className="text-xs text-black/40 mb-3 ml-8">Split 50/50 into YES/NO pools. You get it back + winnings.</p>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-sm">{inWorldApp ? "WLD" : "$"}</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold">$</span>
             <input
               type="number" min="10" value={liquidityStr} onChange={(e) => setLiquidity(e.target.value)}
-              className={`w-full border-4 border-black rounded-xl pr-4 py-2.5 bg-white focus:outline-none ${inWorldApp ? "pl-14" : "pl-8"}`}
+              className="w-full border-4 border-black rounded-xl pl-8 pr-4 py-2.5 bg-white focus:outline-none"
             />
           </div>
           <div className="flex gap-2 mt-2">
             {["50", "100", "250", "500"].map((v) => (
               <button key={v} onClick={() => setLiquidity(v)}
                 className="flex-1 text-xs py-2 border-2 border-black rounded-lg bg-white hover:bg-black hover:text-white transition-colors">
-                {inWorldApp ? `${v} WLD` : `$${v}`}
+                ${v}
               </button>
             ))}
           </div>
@@ -337,7 +329,7 @@ export default function CreatePage() {
               disabled={!isValid || isPending}
               className="retro-btn w-full bg-black text-white py-4 text-base"
             >
-              {isPending ? "Processing…" : `Create Market · Seed ${liquidityStr} WLD`}
+              {isPending ? "Processing…" : `Create Market · Seed $${liquidityStr}`}
             </button>
           </>
         ) : account ? (

@@ -4,9 +4,9 @@ import { isMiniApp, isVerifiedForBet, verifyForBet } from "@/lib/worldid";
 import { prepareContractCall, getContract } from "thirdweb";
 import { useSendTransaction, useActiveAccount, useReadContract } from "thirdweb/react";
 import { client, CHAIN, ORACLEX_ADDRESS, USDC_ADDRESS } from "@/lib/thirdweb";
-import { WORLD_ORACLEX_ADDRESS, WORLD_WLD_ADDRESS } from "@/lib/worldchain";
-import { ORACLE_X_ABI, USDC_ABI, WLD_ABI } from "@/abis/OracleX";
-import { parseUSDC, parseWLD, formatUSDC } from "@/lib/utils";
+import { WORLD_ORACLEX_ADDRESS } from "@/lib/worldchain";
+import { ORACLE_X_ABI, USDC_ABI } from "@/abis/OracleX";
+import { parseUSDC, formatUSDC } from "@/lib/utils";
 import { BuyUSDCButton } from "./BuyUSDCModal";
 import { MiniKit } from "@worldcoin/minikit-js";
 
@@ -51,7 +51,7 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
   }
 
   const isWorldChainMode = inWorldApp && isWorldChain;
-  const usdcAmount = isWorldChainMode ? parseWLD(inputValue) : parseUSDC(inputValue);
+  const usdcAmount = parseUSDC(inputValue);
   const price      = side === "YES" ? yesPct / 100 : noPct / 100;
 
   const { data: usdcBalance } = useReadContract({
@@ -89,16 +89,9 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
     if (!inWorldApp || !isWorldChain || usdcAmount === 0n) return;
     setMkPending(true); setMkError(null);
     try {
-      // Batch approve + buy in a single sendTransaction so World App
-      // executes them atomically (approve is effective for buy in same batch).
+      // No approve needed — MockUSDCWorld auto-approves the OracleX contract
       const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
-          {
-            address: WORLD_WLD_ADDRESS,
-            abi: WLD_ABI as unknown as object[],
-            functionName: "approve",
-            args: [WORLD_ORACLEX_ADDRESS, usdcAmount.toString()],
-          },
           {
             address: WORLD_ORACLEX_ADDRESS,
             abi: ORACLE_X_ABI as unknown as object[],
@@ -278,7 +271,7 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
       {/* Amount input */}
       <div className="mb-4">
         <div className="flex justify-between mb-1.5">
-          <label className="text-xs text-black/50">Amount ({isWorldChainMode ? "WLD" : "USDC"})</label>
+          <label className="text-xs text-black/50">Amount (USDC)</label>
           {action === "SELL" && account && !isWorldChainMode && (
             <button
               onClick={() => setInput((Number(maxSell) / 1e6).toFixed(2))}
@@ -289,17 +282,17 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
           )}
         </div>
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-sm">{isWorldChainMode ? "WLD" : "$"}</span>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold">$</span>
           <input
             type="number" min="1" value={inputValue} onChange={(e) => setInput(e.target.value)}
-            className={`w-full border-4 border-black rounded-xl pr-4 py-3 bg-white focus:outline-none text-sm ${isWorldChainMode ? "pl-14" : "pl-8"}`}
+            className="w-full border-4 border-black rounded-xl pl-8 pr-4 py-3 bg-white focus:outline-none text-sm"
           />
         </div>
         <div className="flex gap-1.5 mt-2">
           {["5", "10", "25", "50"].map((v) => (
             <button key={v} onClick={() => setInput(v)}
               className="flex-1 text-xs py-1.5 border-2 border-black rounded-lg bg-white hover:bg-black hover:text-white transition-colors">
-              {isWorldChainMode ? `${v}` : `$${v}`}
+              ${v}
             </button>
           ))}
         </div>
@@ -372,7 +365,7 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
               : "bg-black text-white"
           }`}
         >
-          {anyPending ? "Confirming…" : action === "BUY" ? `Buy ${side} · ${inputValue} WLD` : `Sell ${side} · ${inputValue} WLD`}
+          {anyPending ? "Confirming…" : action === "BUY" ? `Buy ${side} · $${inputValue}` : `Sell ${side} · $${inputValue}`}
         </button>
       ) : account ? (
         // Browser: use thirdweb
