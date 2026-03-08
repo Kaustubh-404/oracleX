@@ -24,9 +24,9 @@ function contractForChain(chain: string) {
   return chain === "worldchain" ? worldContract : sepoliaContract;
 }
 
-export function useMarketCount() {
+export function useMarketCount(chain = "sepolia") {
   return useReadContract({
-    contract: sepoliaContract,
+    contract: contractForChain(chain),
     method: "marketCount",
     params: [],
   });

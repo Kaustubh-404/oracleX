@@ -3,13 +3,14 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useActiveAccount, useSendTransaction } from "thirdweb/react";
-import { prepareContractCall, getContract } from "thirdweb";
-import { client, CHAIN, ORACLEX_ADDRESS } from "@/lib/thirdweb";
+import { prepareContractCall } from "thirdweb";
+import { WORLD_ORACLEX_ADDRESS } from "@/lib/worldchain";
 import { ORACLE_X_ABI } from "@/abis/OracleX";
-import { useMarket, useUserPositions, useMarketCount } from "@/hooks/useMarkets";
-import { formatUSDC, formatTimeLeft, OUTCOME_LABEL, CATEGORY_META } from "@/lib/utils";
-
-const oracleXContract = getContract({ client, chain: CHAIN, address: ORACLEX_ADDRESS, abi: ORACLE_X_ABI });
+import { useMarket, useUserPositions, useMarketCount, oracleXContract } from "@/hooks/useMarkets";
+import { formatUSDC, OUTCOME_LABEL, CATEGORY_META } from "@/lib/utils";
+import { isMiniApp } from "@/lib/worldid";
+import { getMiniKitAddress } from "@/lib/minikit-wallet";
+import { MiniKit } from "@worldcoin/minikit-js";
 
 const STATUS_STYLES: Record<string, string> = {
   Live:      "bg-[#d3aeff] text-black border-black",
@@ -21,17 +22,21 @@ const STATUS_STYLES: Record<string, string> = {
 function PositionRow({
   marketId,
   userAddress,
+  chain,
   onLoaded,
   onFound,
 }: {
   marketId: bigint;
   userAddress: string;
+  chain: string;
   onLoaded: () => void;
   onFound: () => void;
 }) {
-  const { data: market }    = useMarket(marketId);
-  const { data: positions } = useUserPositions(marketId, userAddress);
-  const { mutate: sendTx, isPending } = useSendTransaction();
+  const { data: market }    = useMarket(marketId, chain);
+  const { data: positions } = useUserPositions(marketId, userAddress, chain);
+  const { mutate: sendTx, isPending: thirdwebPending } = useSendTransaction();
+  const [mkPending, setMkPending] = useState(false);
+  const isPending = thirdwebPending || mkPending;
 
   const reported = useRef(false);
   useEffect(() => {
@@ -63,13 +68,31 @@ function PositionRow({
     ? canClaim ? "Claimable" : "Done"
     : isClosed ? "Ended" : "Live";
 
-  function handleClaim() {
-    const tx = prepareContractCall({
-      contract: oracleXContract,
-      method:   "claimWinnings",
-      params:   [marketId],
-    });
-    sendTx(tx);
+  async function handleClaim() {
+    if (chain === "worldchain") {
+      setMkPending(true);
+      try {
+        const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+          transaction: [{
+            address: WORLD_ORACLEX_ADDRESS,
+            abi: ORACLE_X_ABI as unknown as object[],
+            functionName: "claimWinnings",
+            args: [marketId.toString()],
+          }],
+        });
+        if (finalPayload.status !== "success") {
+          console.error("[MiniKit] claim failed:", finalPayload);
+        }
+      } catch (e) { console.error("[MiniKit] claim error:", e); }
+      finally { setMkPending(false); }
+    } else {
+      const tx = prepareContractCall({
+        contract: oracleXContract,
+        method:   "claimWinnings",
+        params:   [marketId],
+      });
+      sendTx(tx);
+    }
   }
 
   return (
@@ -135,8 +158,8 @@ function PositionRow({
   );
 }
 
-function AllPositions({ address }: { address: string }) {
-  const { data: count } = useMarketCount();
+function AllPositions({ address, chain }: { address: string; chain: string }) {
+  const { data: count } = useMarketCount(chain);
   const [loaded,  setLoaded]  = useState(0);
   const [found,   setFound]   = useState(0);
 
@@ -168,6 +191,7 @@ function AllPositions({ address }: { address: string }) {
             key={id.toString()}
             marketId={id}
             userAddress={address}
+            chain={chain}
             onLoaded={() => setLoaded((n) => n + 1)}
             onFound={() => setFound((n) => n + 1)}
           />
@@ -198,11 +222,19 @@ function AllPositions({ address }: { address: string }) {
 export default function HoldingsPage() {
   const account = useActiveAccount();
   const router  = useRouter();
+  const inWorldApp = isMiniApp();
+  const miniKitAddr = inWorldApp ? getMiniKitAddress() : null;
+  const walletAddress = inWorldApp ? miniKitAddr : account?.address;
+  const chain = inWorldApp ? "worldchain" : "sepolia";
 
   useEffect(() => {
+    if (inWorldApp) {
+      if (!miniKitAddr) router.replace("/");
+      return;
+    }
     if (account === undefined) return;
     if (!account) router.replace("/");
-  }, [account, router]);
+  }, [account, router, inWorldApp, miniKitAddr]);
 
   return (
     <div className="min-h-screen bg-[#efe7f7] pb-28 px-4" style={{ fontFamily: "'Brice Regular', sans-serif" }}>
@@ -213,13 +245,13 @@ export default function HoldingsPage() {
         <p className="text-sm text-black/50 mt-1">Your prediction market positions</p>
       </div>
 
-      {!account ? (
+      {!walletAddress ? (
         <div className="text-center py-20">
           <p className="text-5xl mb-3">👛</p>
           <p className="font-brice-regular text-black/50">Connect your wallet to see holdings</p>
         </div>
       ) : (
-        <AllPositions address={account.address} />
+        <AllPositions address={walletAddress} chain={chain} />
       )}
     </div>
   );
