@@ -136,7 +136,8 @@ async function catchUp(
   if (fromBlock >= latest) return;
 
   console.log(`[Indexer:${chain}] Catching up ${fromBlock} → ${latest}`);
-  const CHUNK = 10n;
+  // Alchemy free tier limits Sepolia eth_getLogs to 10 blocks; World Chain public RPC allows larger ranges
+  const CHUNK = chain === "sepolia" ? 10n : 2000n;
 
   for (let from = fromBlock; from <= latest; from += CHUNK) {
     const to = from + CHUNK - 1n < latest ? from + CHUNK - 1n : latest;

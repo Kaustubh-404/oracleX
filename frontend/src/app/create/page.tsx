@@ -189,6 +189,7 @@ export default function CreatePage() {
       if (finalPayload.status === "success") {
         setStep("done");
         setTxError(`TX: ${(finalPayload as Record<string, unknown>).transaction_id ?? (finalPayload as Record<string, unknown>).transactionId ?? "check console"}`);
+        setTimeout(() => router.push("/markets"), 2000);
       } else {
         setStep("form");
         setTxError(`Rejected: ${JSON.stringify(finalPayload)}`);

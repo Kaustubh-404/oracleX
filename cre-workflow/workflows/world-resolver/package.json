@@ -1,0 +1,22 @@
+{
+  "name": "oraclex-world-resolver",
+  "version": "1.0.0",
+  "description": "CRE workflow: resolves OracleX prediction markets on World Chain via AI + multi-source data",
+  "main": "main.ts",
+  "scripts": {
+    "build": "cre build",
+    "simulate": "cre simulation run --non-interactive --verbose",
+    "simulate:broadcast": "cre simulation run --broadcast --verbose",
+    "secrets:upload": "cre secrets upload --workflow oraclex-world-resolver",
+    "secrets:list": "cre secrets list --workflow oraclex-world-resolver",
+    "deploy": "cre deploy --workflow oraclex-world-resolver --target worldchain"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "^1.0.7",
+    "viem": "^2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

@@ -42,7 +42,7 @@ function MarketCard({ m }: { m: Market }) {
   const statusLabel = (() => {
     if (m.outcome === 1) return { text: "YES",     bg: "bg-[#99ff88] text-black" };
     if (m.outcome === 2) return { text: "NO",      bg: "bg-[#ff6961] text-white" };
-    if (m.outcome === 3) return { text: "INVALID", bg: "bg-black text-white"     };
+    if (m.outcome === 3) return { text: "INVALID", bg: "bg-[#fbbf24] text-black" };
     if (closed)          return { text: "Ended",   bg: "bg-black text-white"     };
     return { text: formatTimeLeft(BigInt(m.closingTime)), bg: "bg-[#d3aeff] text-black" };
   })();

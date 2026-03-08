@@ -26,7 +26,7 @@ const OUTCOME_BG: Record<number, string> = {
   0: "bg-[#d3aeff] text-black",
   1: "bg-[#99ff88] text-black",
   2: "bg-[#ff6961] text-white",
-  3: "bg-black text-white",
+  3: "bg-[#fbbf24] text-black",
 };
 
 /* ── Probability history chart ───────────────────────────────────────────── */
@@ -190,7 +190,7 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
             args: [marketId.toString()],
           }],
         });
-        if (finalPayload.status === "success") refetch();
+        if (finalPayload.status === "success") setTimeout(() => refetch(), 3000);
         else setMkError("Transaction rejected");
       } catch (e) { setMkError(e instanceof Error ? e.message : "Transaction failed"); }
       finally { setMkPending(false); }
@@ -212,7 +212,7 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
             args: [marketId.toString()],
           }],
         });
-        if (finalPayload.status === "success") refetch();
+        if (finalPayload.status === "success") setTimeout(() => refetch(), 3000);
         else setMkError("Transaction rejected");
       } catch (e) { setMkError(e instanceof Error ? e.message : "Transaction failed"); }
       finally { setMkPending(false); }
@@ -282,6 +282,18 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
               <div className="h-full bg-[#d3aeff] rounded-full" style={{ width: `${(Number(market.aiConfidenceBps) / 100).toFixed(1)}%` }} />
             </div>
             <p className="text-xs text-black/40 mt-2">Resolved by Chainlink CRE + Llama 3.3 70B</p>
+          </div>
+        )}
+
+        {/* Invalid banner */}
+        {outcome === 3 && (
+          <div className="border-4 border-[#fbbf24] rounded-2xl p-4 bg-[#fbbf24]/20 text-center">
+            <p className="text-lg font-bold" style={{ fontFamily: "'Brice Black', sans-serif" }}>
+              INVALID — All positions refunded
+            </p>
+            <p className="text-xs text-black/60 mt-1">
+              AI confidence was below threshold. All participants can claim their full refund.
+            </p>
           </div>
         )}
 

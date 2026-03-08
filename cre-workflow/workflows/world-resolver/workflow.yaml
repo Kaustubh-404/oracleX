@@ -1,0 +1,31 @@
+# OracleX Market Resolver — World Chain CRE Workflow
+name: oraclex-world-resolver
+version: "1.0.0"
+sdk:
+  language: typescript
+
+triggers:
+  # Fires when OracleX contract on World Chain emits SettlementRequested(uint256,string,uint256)
+  - type: evm-log
+    config:
+      address: "0x266BD36ae57d7803C689A34a97dfE85469295E74"
+      topics:
+        # keccak256("SettlementRequested(uint256,string,uint256)")
+        - "0x813a00d90f295e3a328f8a3c7a7df73ee8ae3729dad74d6d0cc81b0d0711a7a8"
+      chain: "ethereum-mainnet-worldchain-1"
+      confirmations: finalized
+
+targets:
+  - id: worldchain
+    chain: "ethereum-mainnet-worldchain-1"
+    rpcUrl: "https://worldchain-mainnet.g.alchemy.com/public"
+    contracts:
+      - name: OracleX
+        address: "0x266BD36ae57d7803C689A34a97dfE85469295E74"
+        abi: ../../abis/OracleX.json
+
+settings:
+  timeoutSeconds: 120
+  gasConfig:
+    maxFeePerGas: "50000000000"
+    maxPriorityFeePerGas: "2000000000"

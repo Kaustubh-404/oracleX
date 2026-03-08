@@ -16,6 +16,7 @@ const STATUS_STYLES: Record<string, string> = {
   Live:      "bg-[#d3aeff] text-black border-black",
   Ended:     "bg-black     text-white border-black",
   Claimable: "bg-[#99ff88] text-black border-black",
+  Invalid:   "bg-[#fbbf24] text-black border-black",
   Done:      "bg-black/10  text-black/50 border-black/20",
 };
 
@@ -65,7 +66,7 @@ function PositionRow({
      (outcome === 3 && (yesAmt > 0n || noAmt > 0n)));
 
   const statusKey = !isOpen
-    ? canClaim ? "Claimable" : "Done"
+    ? outcome === 3 ? "Invalid" : canClaim ? "Claimable" : "Done"
     : isClosed ? "Ended" : "Live";
 
   async function handleClaim() {
@@ -80,7 +81,9 @@ function PositionRow({
             args: [marketId.toString()],
           }],
         });
-        if (finalPayload.status !== "success") {
+        if (finalPayload.status === "success") {
+          setTimeout(() => window.location.reload(), 2000);
+        } else {
           console.error("[MiniKit] claim failed:", finalPayload);
         }
       } catch (e) { console.error("[MiniKit] claim error:", e); }
@@ -130,7 +133,15 @@ function PositionRow({
       </div>
 
       {/* Action */}
-      {canClaim ? (
+      {canClaim && outcome === 3 ? (
+        <button
+          onClick={handleClaim}
+          disabled={isPending}
+          className="retro-btn w-full bg-[#fbbf24] text-black py-2.5 text-sm"
+        >
+          {isPending ? "Claiming…" : "Claim Refund — Market Invalid"}
+        </button>
+      ) : canClaim ? (
         <button
           onClick={handleClaim}
           disabled={isPending}
@@ -150,7 +161,7 @@ function PositionRow({
           {isClosed
             ? "Awaiting settlement"
             : outcome === 3
-            ? "Refunded"
+            ? "Refunded — Market Invalid"
             : `Lost — ${OUTCOME_LABEL[outcome]} won`}
         </div>
       )}

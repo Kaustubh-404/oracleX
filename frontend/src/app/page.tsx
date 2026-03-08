@@ -107,11 +107,19 @@ export default function LandingPage() {
         )}
       </div>
 
+      {/* How it works link */}
+      <button
+        onClick={() => router.push("/guide")}
+        className="relative z-10 text-xs text-black/60 underline underline-offset-2 text-left"
+      >
+        How does OracleX work? →
+      </button>
+
       {/* Powered by label */}
-      <p className="relative z-10 text-xs text-black/50">
-        Powered by Chainlink CRE · Sepolia Testnet
+      <p className="relative z-10 text-xs text-black/50 -mt-4">
+        Powered by Chainlink CRE {inWorld ? "· World Chain" : "· Sepolia Testnet"}
       </p>
-      <p className="relative z-10 text-[10px] text-black/30 -mt-6">v1.3.0</p>
+      <p className="relative z-10 text-[10px] text-black/30 -mt-6">v1.4.0</p>
     </div>
   );
 }

@@ -103,6 +103,7 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
       if (finalPayload.status === "success") {
         setInput("10");
         onSuccess?.();
+        setTimeout(() => window.location.reload(), 2000);
       } else {
         setMkError("Transaction rejected");
       }
@@ -130,6 +131,7 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
       if (finalPayload.status === "success") {
         setInput("10");
         onSuccess?.();
+        setTimeout(() => window.location.reload(), 2000);
       } else {
         setMkError("Transaction rejected");
       }
