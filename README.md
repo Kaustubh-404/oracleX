@@ -36,11 +36,17 @@ OracleX is a fully on-chain prediction market platform where **every outcome is 
 
 ## Try It Out
 
+**Demo Video:** [Watch on YouTube](https://youtu.be/S4h_PYaZUGc)
+
 **World Mini App:** [Open in World App](https://world.org/mini-app?app_id=app_b159f2daf0166e319f176436aaa283f4&path=&draft_id=meta_37b70a54028506ce2c0ff3fe6789ea08)
 
-> Open the link on your phone with World App installed to launch OracleX as a mini app. Trade prediction markets gas-free on World Chain with World ID verification.
+Scan this QR code with your phone to try OracleX as a World Mini App:
 
-**Demo Video:** [Watch on YouTube](https://youtu.be/S4h_PYaZUGc)
+<p align="center">
+  <img src="WORLD-MINIAPP-QR.png" alt="Scan to open OracleX in World App" width="200" />
+</p>
+
+> Open the link or scan the QR on your phone with World App installed. Trade prediction markets gas-free on World Chain with World ID verification.
 
 ---
 
@@ -107,6 +113,8 @@ OracleX is a fully on-chain prediction market platform where **every outcome is 
 
 ## How It Works
 
+<br>
+
 ### 1. Market Creation
 
 Anyone can create a yes/no prediction market on any topic:
@@ -119,14 +127,22 @@ Anyone can create a yes/no prediction market on any topic:
 
 In the World Mini App, **World ID verification** is required before creating a market — this prevents spam and sybil attacks by ensuring one unique human per market creation.
 
-**Contract function:** `createMarket(question, category, resolutionSource, closingTime, settlementDeadline, collateral, initialLiquidity)`
+> **Contract function:** `createMarket(question, category, resolutionSource, closingTime, settlementDeadline, collateral, initialLiquidity)`
+
+<br>
+
+---
+
+<br>
 
 ### 2. Share Buying (Pool-Based Pricing)
 
 OracleX uses a **pool-based ratio pricing** model. Each market has two liquidity pools:
 
-- **YES Pool** — total USDC backing the YES outcome
-- **NO Pool** — total USDC backing the NO outcome
+| Pool | Description |
+|------|-------------|
+| **YES Pool** | Total USDC backing the YES outcome |
+| **NO Pool** | Total USDC backing the NO outcome |
 
 **Price calculation:**
 ```
@@ -134,9 +150,9 @@ YES Price = yesPool / (yesPool + noPool)
 NO Price  = noPool  / (yesPool + noPool)
 ```
 
-For example, if YES pool = $60 and NO pool = $40:
-- YES price = 60% ($0.60 per share)
-- NO price = 40% ($0.40 per share)
+> **Example:** YES pool = $60, NO pool = $40
+> - YES price = 60% ($0.60 per share)
+> - NO price = 40% ($0.40 per share)
 
 **When you buy YES shares:**
 1. Your USDC is added to `yesPool`
@@ -144,10 +160,15 @@ For example, if YES pool = $60 and NO pool = $40:
 3. The YES price increases (because the YES pool grew relative to total)
 4. The more people buy one side, the more expensive it gets
 
-**When you buy NO shares:**
-- Same logic but added to `noPool`, tracked in `noPositions`
+**When you buy NO shares:** Same logic but added to `noPool`, tracked in `noPositions`.
 
-**Contract functions:** `buyYes(marketId, amount)`, `buyNo(marketId, amount)`
+> **Contract functions:** `buyYes(marketId, amount)`, `buyNo(marketId, amount)`
+
+<br>
+
+---
+
+<br>
 
 ### 3. Share Selling (Exit Before Close)
 
@@ -161,19 +182,56 @@ Net payout    = proceeds - fee
 
 The spread (difference between your shares and proceeds) is redistributed to the opposite pool, maintaining market balance.
 
-**Example:** You hold 100 YES shares. YES pool = $600, NO pool = $400, total = $1000.
-- Proceeds = (100 × 600) / 1000 = $60
-- Fee = $0.60 (1%)
-- You receive = $59.40
-- Spread ($40) goes to the NO pool
+> **Example:** You hold 100 YES shares. YES pool = $600, NO pool = $400, total = $1000.
+> | | Amount |
+> |---|--------|
+> | Proceeds | (100 × 600) / 1000 = **$60** |
+> | Fee (1%) | **$0.60** |
+> | You receive | **$59.40** |
+> | Spread → NO pool | **$40** |
 
-**Contract function:** `sellShares(marketId, isYes, amount)`
+> **Contract function:** `sellShares(marketId, isYes, amount)`
 
 The frontend shows your current holdings count when the SELL tab is active, and caps the sell amount to your maximum position.
 
+<br>
+
+---
+
+<br>
+
 ### 4. AI Settlement via Chainlink CRE
 
-This is the core innovation. When a market's closing time passes:
+This is the **core innovation**. When a market's closing time passes:
+
+```
+User taps "Request AI Settlement"
+         │
+         ▼
+  requestSettlement(marketId) on-chain
+         │
+         ▼
+  SettlementRequested event emitted
+         │
+         ▼
+  CRE DON detects via EVM-log trigger
+         │
+         ▼
+  Each node independently:
+    ├── EVMClient.callContract()  → reads question from chain
+    ├── HTTPClient → CoinGecko   → crypto prices
+    ├── HTTPClient → Odds API    → sports results
+    ├── HTTPClient → NewsAPI     → news articles
+    └── HTTPClient → Groq AI    → outcome decision
+         │
+         ▼
+  consensusIdenticalAggregation (ALL nodes must agree)
+         │
+         ▼
+  EVMClient.writeReport() → receiveSettlement() on-chain
+```
+
+**Step by step:**
 
 1. **Anyone** taps "Request AI Settlement" → calls `requestSettlement(marketId)` on-chain
 2. The contract emits a `SettlementRequested(marketId, question, timestamp)` event
@@ -185,12 +243,12 @@ This is the core innovation. When a market's closing time passes:
      - **The Odds API** — sports results and odds
      - **NewsAPI** — recent news articles related to the question
    - Calls **Groq AI** (`llama-3.3-70b-versatile`) with a structured prompt containing the question + external data
-   - AI returns a JSON response: `{ outcome: "YES"|"NO"|"INVALID", confidence_bps: 0-10000, reasoning: "..." }`
-5. **`consensusIdenticalAggregation`** — ALL nodes must produce the exact same AI response (BFT consensus)
+   - AI returns: `{ outcome: "YES"|"NO"|"INVALID", confidence_bps: 0-10000, reasoning: "..." }`
+5. **`consensusIdenticalAggregation`** — ALL nodes must produce the exact same response (BFT consensus)
 6. If confidence < 80% (8000 bps), outcome is forced to **INVALID**
 7. The DON writes the settlement on-chain via `EVMClient.writeReport()` → `receiveSettlement()`
 
-**Why this matters:** The AI is not running on a single server — it runs independently on every DON node, and they must all agree. This eliminates single points of failure, manipulation, and centralized control.
+> **Why this matters:** The AI is not running on a single server — it runs independently on every DON node, and they must all agree. This eliminates single points of failure, manipulation, and centralized control.
 
 **Groq AI prompt (simplified):**
 ```
@@ -199,68 +257,102 @@ Resolution source: CoinGecko API
 External data: [live price data from CoinGecko]
 Current time: 2026-06-01T00:00:00Z
 
-→ AI responds: {"outcome": "YES", "confidence_bps": 9500, "reasoning": "ETH is at $3,200, above threshold"}
+→ AI responds: {"outcome": "YES", "confidence_bps": 9500, "reasoning": "ETH is at $3,200"}
 ```
 
-**Temperature: 0.1** — near-deterministic to ensure all nodes get the same answer.
+Temperature is set to **0.1** (near-deterministic) to ensure all nodes produce the same answer.
+
+<br>
+
+---
+
+<br>
 
 ### 5. Outcomes: Win, Lose, Invalid
 
 After AI settlement, there are three possible outcomes:
 
+<br>
+
 #### YES (outcome = 1) or NO (outcome = 2)
-- The AI determined the answer with **≥80% confidence**
-- **Winners** (holders of the winning side) can claim proportional payouts from the total pool
-- **Losers** (holders of the losing side) receive nothing — their funds go to winners
+
+| | |
+|---|---|
+| **Condition** | AI determined the answer with **≥80% confidence** |
+| **Winners** | Holders of the winning side claim proportional payouts from the total pool |
+| **Losers** | Holders of the losing side receive nothing — their funds go to winners |
+| **Fee** | 1% protocol fee on claimed winnings |
+
+<br>
 
 #### INVALID (outcome = 3)
-- The AI could **not** determine the outcome with sufficient confidence
-- This happens when:
-  - The question is about a future event that hasn't occurred yet
-  - Contradictory or insufficient data
-  - The question is ambiguous or unanswerable
-- **Everyone gets refunded** — both YES and NO holders get their full position back
-- No protocol fee is charged on INVALID refunds
 
-**Example:** "Will the Fed cut rates twice in 2026?" asked in March 2026. The AI marks this INVALID because 9 months of the year remain — insufficient evidence. Nobody loses money.
+| | |
+|---|---|
+| **Condition** | AI could **not** determine the outcome with sufficient confidence |
+| **Everyone** | Both YES and NO holders get their **full position refunded** |
+| **Fee** | No protocol fee charged on INVALID refunds |
 
-**Confidence threshold:** The contract enforces `confidenceBps >= 8000` (80%). The AI itself must also be confident its answer IS invalid when returning INVALID.
+**When does INVALID happen?**
+- The question is about a future event that hasn't occurred yet
+- Contradictory or insufficient data available
+- The question is ambiguous or unanswerable
+
+> **Example:** "Will the Fed cut rates twice in 2026?" asked in March 2026. The AI marks this INVALID because 9 months of the year remain — insufficient evidence. Nobody loses money.
+
+> **Note:** The contract enforces `confidenceBps >= 8000` (80%) for ALL outcomes, including INVALID. The AI must be confident that the answer IS invalid.
+
+<br>
+
+---
+
+<br>
 
 ### 6. Claiming Rewards
 
 After settlement, users go to the **Holdings** tab:
 
-**If you won (your side matches the outcome):**
+| Status | What it means | Action |
+|--------|--------------|--------|
+| **Claimable** (green) | You won — your side matched the outcome | Tap "Claim Winnings" |
+| **Claimable** (amber) | Market was INVALID — full refund | Tap "Claim Refund" |
+| **Done** | You lost — opposite side won | No action needed |
+| **Done** | Already claimed | No action needed |
+
+**Winner payout formula:**
 ```
 Payout = (yourShares × totalPool) / winningSidePool
 Fee    = 1% of payout
 Net    = payout - fee
 ```
-Your shares give you a proportional claim on the entire pool (both YES and NO funds).
 
-**If you lost (your side doesn't match):**
-- Your position shows "Done" with "Lost — YES/NO won"
-- No action needed, no funds to claim
+Your shares give you a proportional claim on the **entire pool** (both YES and NO funds).
 
-**If INVALID:**
-- Both YES and NO holders can claim **full refunds** (no fee)
-- Position shows "Claimable" with amber badge
+> **Contract functions:** `claimWinnings(marketId)`, `claimRefund(marketId)`
 
-**Contract functions:** `claimWinnings(marketId)`, `claimRefund(marketId)`
+<br>
 
 ---
+
+<br>
 
 ## World Mini App
 
 OracleX is built primarily as a **World Mini App** — a dApp that runs natively inside World App, reaching **10M+ verified humans**.
 
+<br>
+
 ### Why World App?
 
-- **Zero gas fees** — World Chain subsidizes gas for mini app transactions
-- **No wallet setup** — users already have a wallet in World App
-- **World ID** — built-in sybil resistance (proof of unique humanness)
-- **1-tap trading** — MiniKit `sendTransaction` handles everything
-- **Instant onboarding** — Sign in with World App → start trading immediately
+| Benefit | Detail |
+|---------|--------|
+| **Zero gas fees** | World Chain subsidizes gas for mini app transactions |
+| **No wallet setup** | Users already have a wallet in World App |
+| **World ID** | Built-in sybil resistance (proof of unique humanness) |
+| **1-tap trading** | MiniKit `sendTransaction` handles everything |
+| **Instant onboarding** | Sign in with World App → start trading immediately |
+
+<br>
 
 ### Technical Integration
 
@@ -273,16 +365,20 @@ OracleX is built primarily as a **World Mini App** — a dApp that runs natively
 | **Chain** | World Chain mainnet (chain ID 480) — the only chain MiniKit supports |
 | **Wallet persistence** | `localStorage` via `minikit-wallet.ts` — address persists across sessions |
 
+<br>
+
 ### World App Challenges Solved
 
 | Challenge | Solution |
 |-----------|----------|
-| World App blocks `approve()` calls in mini apps | Deployed `MockUSDCWorld` with OracleX as trusted operator — `transferFrom` works without approval |
+| World App blocks `approve()` calls | `MockUSDCWorld` with OracleX as trusted operator — `transferFrom` works without approval |
 | MiniKit only works on World Chain mainnet | Dual-chain architecture — separate contracts + CRE workflows per chain |
-| No sequential transaction execution guarantee | Single-transaction flows — no approve→action batches |
+| No sequential tx execution guarantee | Single-transaction flows — no approve→action batches |
 | `sendTransaction` returns app-level ID, not tx hash | Backend indexer watches on-chain events for confirmation |
-| MiniKit not installed warnings in browser | `isMiniApp()` guard — graceful degradation to thirdweb wallet in browser |
-| `useActiveAccount()` returns undefined for MiniKit users | `getMiniKitAddress()` from localStorage for chain reads + position tracking |
+| MiniKit not installed warnings in browser | `isMiniApp()` guard — graceful degradation to thirdweb wallet |
+| `useActiveAccount()` undefined for MiniKit users | `getMiniKitAddress()` from localStorage for chain reads + position tracking |
+
+<br>
 
 ### MockUSDCWorld Token
 
@@ -301,60 +397,91 @@ function transferFrom(address from, address to, uint256 amount) public override 
 
 Users can mint test USDC via `faucet()` (max 10,000 per call).
 
+<br>
+
 ---
+
+<br>
 
 ## Hackathon Track Alignment
 
+<br>
+
 ### Track 1: Prediction Markets
 
-OracleX is a **decentralized prediction market** with automated, verifiable settlement:
+OracleX is a **decentralized prediction market** with automated, verifiable settlement.
+
 - Users create yes/no markets on any topic (crypto, sports, tech, news)
 - USDC-denominated positions with pool-based ratio pricing
 - **AI-powered settlement** — Groq llama-3.3-70b analyzes real-world data sources
 - **Confidence gating** — below 80% confidence → INVALID outcome → full refunds
 - Multi-source data: CoinGecko (crypto), The Odds API (sports), NewsAPI (news)
 
-**Chainlink files**: [`cre-workflow/workflows/market-resolver/main.ts`](cre-workflow/workflows/market-resolver/main.ts), [`contracts/src/OracleX.sol`](contracts/src/OracleX.sol)
+> **Chainlink files**: [`cre-workflow/workflows/market-resolver/main.ts`](cre-workflow/workflows/market-resolver/main.ts), [`contracts/src/OracleX.sol`](contracts/src/OracleX.sol)
+
+<br>
+
+---
+
+<br>
 
 ### Track 2: CRE & AI
 
-The CRE workflow is the **core orchestration layer** — AI doesn't just assist, it *is* the oracle:
-- **EVM log trigger** → detects `SettlementRequested` on-chain events
-- **EVMClient.callContract()** → reads market details from the blockchain
-- **HTTPClient** → fetches real-time data from 3 external APIs
-- **Groq AI (llama-3.3-70b)** → structured JSON prompt → `{outcome, confidence_bps, reasoning}`
-- **consensusIdenticalAggregation** → all DON nodes must produce identical AI results
-- **EVMClient.writeReport()** → writes the verified AI decision on-chain
+The CRE workflow is the **core orchestration layer** — AI doesn't just assist, it *is* the oracle.
 
-**Chainlink files**:
-- Sepolia: [`cre-workflow/workflows/market-resolver/main.ts`](cre-workflow/workflows/market-resolver/main.ts), [`workflow.yaml`](cre-workflow/workflows/market-resolver/workflow.yaml)
-- World Chain: [`cre-workflow/workflows/world-resolver/main.ts`](cre-workflow/workflows/world-resolver/main.ts), [`workflow.yaml`](cre-workflow/workflows/world-resolver/workflow.yaml)
-- Contract: [`contracts/src/OracleX.sol`](contracts/src/OracleX.sol) — `receiveSettlement()`, `requestSettlement()`
+| CRE Capability | What it does in OracleX |
+|----------------|------------------------|
+| **EVM log trigger** | Detects `SettlementRequested` on-chain events |
+| **EVMClient.callContract()** | Reads market details from the blockchain |
+| **HTTPClient** | Fetches real-time data from 3 external APIs |
+| **Groq AI (llama-3.3-70b)** | Structured JSON prompt → `{outcome, confidence_bps, reasoning}` |
+| **consensusIdenticalAggregation** | All DON nodes must produce identical AI results |
+| **EVMClient.writeReport()** | Writes the verified AI decision on-chain |
+
+> **Chainlink files**:
+> - Sepolia: [`market-resolver/main.ts`](cre-workflow/workflows/market-resolver/main.ts), [`workflow.yaml`](cre-workflow/workflows/market-resolver/workflow.yaml)
+> - World Chain: [`world-resolver/main.ts`](cre-workflow/workflows/world-resolver/main.ts), [`workflow.yaml`](cre-workflow/workflows/world-resolver/workflow.yaml)
+> - Contract: [`OracleX.sol`](contracts/src/OracleX.sol) — `receiveSettlement()`, `requestSettlement()`
+
+<br>
+
+---
+
+<br>
 
 ### Track 3: Best Use of World ID with CRE
+
+World ID provides **sybil-resistant market creation** inside the World Mini App.
 
 - Before creating a market, users must verify with **World ID** (proof of unique humanness)
 - Prevents spam market creation and wash trading
 - World ID verification via MiniKit's `verify()` — proof validated before on-chain transaction
 - CRE then resolves these World ID-gated markets via AI + consensus + on-chain settlement
 
-**World ID files**: [`frontend/src/lib/worldid.ts`](frontend/src/lib/worldid.ts), [`frontend/src/app/create/page.tsx`](frontend/src/app/create/page.tsx)
+> **World ID files**: [`frontend/src/lib/worldid.ts`](frontend/src/lib/worldid.ts), [`frontend/src/app/create/page.tsx`](frontend/src/app/create/page.tsx)
+
+<br>
+
+---
+
+<br>
 
 ### Track 4: Best Usage of CRE within a World Mini App
 
-OracleX runs as a **full-featured World Mini App**:
+OracleX runs as a **full-featured World Mini App** with CRE-powered settlement.
+
 - **MiniKit SDK** — `walletAuth` for sign-in, `sendTransaction` for gas-free trading
 - **World Chain mainnet (chain 480)** — all mini app transactions
 - **CRE resolves World Chain markets** — `world-resolver` workflow listens for events on World Chain
 - **No approvals needed** — custom `MockUSDCWorld` with OracleX as trusted operator
 - **Dual-chain architecture** — same frontend serves web (Sepolia) and mini app (World Chain)
 
-**Mini App files**:
-- MiniKit: [`frontend/src/components/MiniKitProvider.tsx`](frontend/src/components/MiniKitProvider.tsx), [`frontend/src/lib/minikit-wallet.ts`](frontend/src/lib/minikit-wallet.ts)
-- World Chain: [`frontend/src/lib/worldchain.ts`](frontend/src/lib/worldchain.ts)
-- Trading: [`frontend/src/components/TradePanel.tsx`](frontend/src/components/TradePanel.tsx) (`handleWorldChainBuy`, `handleWorldChainSell`)
-- CRE workflow: [`cre-workflow/workflows/world-resolver/main.ts`](cre-workflow/workflows/world-resolver/main.ts)
-- Token: [`contracts/src/MockUSDCWorld.sol`](contracts/src/MockUSDCWorld.sol)
+> **Mini App files**:
+> - MiniKit: [`MiniKitProvider.tsx`](frontend/src/components/MiniKitProvider.tsx), [`minikit-wallet.ts`](frontend/src/lib/minikit-wallet.ts)
+> - World Chain: [`worldchain.ts`](frontend/src/lib/worldchain.ts)
+> - Trading: [`TradePanel.tsx`](frontend/src/components/TradePanel.tsx) (`handleWorldChainBuy`, `handleWorldChainSell`)
+> - CRE workflow: [`world-resolver/main.ts`](cre-workflow/workflows/world-resolver/main.ts)
+> - Token: [`MockUSDCWorld.sol`](contracts/src/MockUSDCWorld.sol)
 
 ---
 
