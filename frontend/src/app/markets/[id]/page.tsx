@@ -144,6 +144,9 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
   const isOwner = !!(account && ownerAddress &&
     account.address.toLowerCase() === (ownerAddress as string).toLowerCase());
 
+  const [mkPending, setMkPending] = useState(false);
+  const [mkError,   setMkError]   = useState<string | null>(null);
+
   const liveUpdate = useMarketSocket(id);
   useEffect(() => { if (liveUpdate) refetch(); }, [liveUpdate, refetch]);
 
@@ -173,8 +176,6 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
     !market.settlementRequested &&
     BigInt(Math.floor(Date.now() / 1000)) >= market.closingTime;
 
-  const [mkPending, setMkPending] = useState(false);
-  const [mkError,   setMkError]   = useState<string | null>(null);
   const anyTxPending = txPending || mkPending;
 
   async function handleRequestSettlement() {
