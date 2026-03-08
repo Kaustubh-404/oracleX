@@ -9,9 +9,12 @@ import { ORACLE_X_ABI, USDC_ABI } from "@/abis/OracleX";
 import { parseUSDC, formatUSDC } from "@/lib/utils";
 import { BuyUSDCButton } from "./BuyUSDCModal";
 import { MiniKit } from "@worldcoin/minikit-js";
+import { getMiniKitAddress } from "@/lib/minikit-wallet";
+import { WORLD_CHAIN } from "@/lib/thirdweb";
 
 const oracleXContract = getContract({ client, chain: CHAIN, address: ORACLEX_ADDRESS, abi: ORACLE_X_ABI });
 const usdcContract    = getContract({ client, chain: CHAIN, address: USDC_ADDRESS,    abi: USDC_ABI    });
+const worldOracleXContract = getContract({ client, chain: WORLD_CHAIN, address: WORLD_ORACLEX_ADDRESS, abi: ORACLE_X_ABI });
 
 interface Props { marketId: bigint; yesPct: number; noPct: number; chain?: string; onSuccess?: () => void; }
 type Action = "BUY" | "SELL";
@@ -69,9 +72,13 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
     ],
   });
 
+  const posAddress = isWorldChainMode
+    ? (getMiniKitAddress() ?? "0x0000000000000000000000000000000000000000") as `0x${string}`
+    : (account?.address ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
   const { data: positions, refetch: refetchPositions } = useReadContract({
-    contract: oracleXContract, method: "getUserPositions",
-    params: [marketId, account?.address ?? "0x0000000000000000000000000000000000000000" as `0x${string}`],
+    contract: isWorldChainMode ? worldOracleXContract : oracleXContract,
+    method: "getUserPositions",
+    params: [marketId, posAddress],
   });
   const yesPos  = positions ? positions[0] : 0n;
   const noPos   = positions ? positions[1] : 0n;
@@ -240,8 +247,8 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
         ))}
       </div>
 
-      {/* No position on SELL (only for browser Sepolia) */}
-      {action === "SELL" && account && !hasAnyPosition && !isWorldChainMode && (
+      {/* No position on SELL */}
+      {action === "SELL" && (account || isWorldChainMode) && !hasAnyPosition && (
         <div className="text-center py-6 border-4 border-dashed border-black/20 rounded-2xl mb-4">
           <p className="text-2xl mb-2">📭</p>
           <p className="text-sm font-bold">No open position</p>
@@ -249,6 +256,25 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
           <button onClick={() => setAction("BUY")} className="mt-3 text-xs underline decoration-dotted text-black/60">
             Switch to Buy →
           </button>
+        </div>
+      )}
+
+      {/* Holdings display when SELL is active */}
+      {action === "SELL" && hasAnyPosition && (
+        <div className="border-4 border-black/10 rounded-2xl p-3 mb-3 bg-[#d3aeff]/10 text-xs space-y-1">
+          <p className="font-bold text-black/60 mb-1" style={{ fontFamily: "'Brice SemiBold', sans-serif" }}>Your Holdings</p>
+          {yesPos > 0n && (
+            <div className="flex justify-between">
+              <span className="text-black/50">YES shares</span>
+              <span className="font-bold text-black">{formatUSDC(yesPos)}</span>
+            </div>
+          )}
+          {noPos > 0n && (
+            <div className="flex justify-between">
+              <span className="text-black/50">NO shares</span>
+              <span className="font-bold text-black">{formatUSDC(noPos)}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -274,7 +300,7 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
       <div className="mb-4">
         <div className="flex justify-between mb-1.5">
           <label className="text-xs text-black/50">Amount (USDC)</label>
-          {action === "SELL" && account && !isWorldChainMode && (
+          {action === "SELL" && (account || isWorldChainMode) && (
             <button
               onClick={() => setInput((Number(maxSell) / 1e6).toFixed(2))}
               className="text-xs underline decoration-dotted text-black/60"
@@ -360,7 +386,7 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
         // World App + World Chain: use MiniKit
         <button
           onClick={action === "BUY" ? handleWorldChainBuy : handleWorldChainSell}
-          disabled={anyPending || usdcAmount === 0n || (action === "BUY" && !widVerified)}
+          disabled={anyPending || usdcAmount === 0n || (action === "BUY" && !widVerified) || (action === "SELL" && usdcAmount > maxSell)}
           className={`retro-btn w-full py-3.5 text-sm ${
             action === "BUY"
               ? side === "YES" ? "bg-[#99ff88] text-black" : "bg-[#ff6961] text-white"
@@ -386,7 +412,7 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
         <p className="text-center text-sm text-black/40 py-3">Connect wallet to trade</p>
       )}
 
-      {action === "SELL" && usdcAmount > maxSell && account && !isWorldChainMode && (
+      {action === "SELL" && usdcAmount > maxSell && (account || isWorldChainMode) && (
         <p className="mt-2 text-xs text-[#ff6961] text-center">Exceeds your position of {formatUSDC(maxSell)}</p>
       )}
       {error && <p className="mt-2 text-xs text-[#ff6961] text-center">{error.message}</p>}
