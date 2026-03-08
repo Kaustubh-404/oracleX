@@ -40,7 +40,7 @@ const TOPIC_POSITION_SOLD        = toEventSelector(POSITION_SOLD);
 const TOPIC_SETTLEMENT_REQUESTED = toEventSelector(SETTLEMENT_REQUESTED);
 const TOPIC_MARKET_SETTLED       = toEventSelector(MARKET_SETTLED);
 
-// World Chain Sepolia chain definition
+// World Chain definitions
 const worldChainSepolia = defineChain({
   id:   4801,
   name: "World Chain Sepolia",
@@ -49,6 +49,21 @@ const worldChainSepolia = defineChain({
     default: { http: ["https://worldchain-sepolia.g.alchemy.com/public"] },
   },
 });
+
+const worldChainMainnet = defineChain({
+  id:   480,
+  name: "World Chain",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://worldchain-mainnet.g.alchemy.com/public"] },
+  },
+});
+
+function resolveViemChain(chain: string) {
+  if (chain === "worldchain-sepolia") return worldChainSepolia;
+  if (chain === "worldchain") return worldChainMainnet;
+  return sepolia;
+}
 
 // ── Start indexer for a single chain ────────────────────────────────────────
 
@@ -65,7 +80,7 @@ export async function startChainIndexer(
     return;
   }
 
-  const viemChain = chain === "worldchain-sepolia" ? worldChainSepolia : sepolia;
+  const viemChain = resolveViemChain(chain);
   const client = createPublicClient({ chain: viemChain, transport: http(rpcUrl) });
 
   const envStartBlock = startBlock ?? BigInt(process.env.START_BLOCK ?? "0");

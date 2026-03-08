@@ -138,7 +138,7 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
   const { data: positions }                  = useUserPositions(marketId, userAddress, chain);
   const { mutate: sendTx, isPending: txPending } = useSendTransaction();
 
-  const activeContract = chain === "worldchain-sepolia" ? worldOracleXContract : oracleXContract;
+  const activeContract = chain === "worldchain" ? worldOracleXContract : oracleXContract;
   const { data: ownerAddress } = useReadContract({ contract: activeContract, method: "owner", params: [] });
 
   const isOwner = !!(account && ownerAddress &&
@@ -178,7 +178,7 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
   const anyTxPending = txPending || mkPending;
 
   async function handleRequestSettlement() {
-    if (inWorldApp && chain === "worldchain-sepolia") {
+    if (inWorldApp && chain === "worldchain") {
       setMkPending(true); setMkError(null);
       try {
         const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
@@ -200,7 +200,7 @@ export default function MarketPage({ params }: { params: Promise<{ id: string }>
   }
 
   async function handleClaimWinnings() {
-    if (inWorldApp && chain === "worldchain-sepolia") {
+    if (inWorldApp && chain === "worldchain") {
       setMkPending(true); setMkError(null);
       try {
         const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({

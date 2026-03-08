@@ -21,7 +21,7 @@ const worldContract = getContract({
 });
 
 function contractForChain(chain: string) {
-  return chain === "worldchain-sepolia" ? worldContract : sepoliaContract;
+  return chain === "worldchain" ? worldContract : sepoliaContract;
 }
 
 export function useMarketCount() {

@@ -36,6 +36,11 @@ const config: HardhatUserConfig = {
       accounts: [PRIVATE_KEY],
       chainId: 4801,
     },
+    "worldchain": {
+      url: "https://worldchain-mainnet.g.alchemy.com/public",
+      accounts: [PRIVATE_KEY],
+      chainId: 480,
+    },
   },
   etherscan: {
     apiKey: {

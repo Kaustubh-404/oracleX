@@ -64,11 +64,12 @@ const SEPOLIA_RPC = process.env.RPC_URL ?? "";
 startChainIndexer("sepolia", process.env.ORACLEX_ADDRESS ?? "", SEPOLIA_RPC, io)
   .catch((err) => console.error("[Indexer:sepolia] startup error:", err));
 
-// Start indexer for World Chain Sepolia (if configured)
-const WORLD_CONTRACT = process.env.WORLD_ORACLEX_ADDRESS ?? "";
-const WORLD_RPC      = process.env.WORLD_CHAIN_RPC_URL ?? "https://worldchain-sepolia.g.alchemy.com/public";
-const WORLD_START    = BigInt(process.env.WORLD_START_BLOCK ?? "25731000");
+// Start indexer for World Chain (mainnet — mini apps only work on mainnet)
+const WORLD_CHAIN_SLUG = process.env.WORLD_CHAIN_SLUG ?? "worldchain";
+const WORLD_CONTRACT   = process.env.WORLD_ORACLEX_ADDRESS ?? "";
+const WORLD_RPC        = process.env.WORLD_CHAIN_RPC_URL ?? "https://worldchain-mainnet.g.alchemy.com/public";
+const WORLD_START      = BigInt(process.env.WORLD_START_BLOCK ?? "26797490");
 if (WORLD_CONTRACT && WORLD_CONTRACT !== "0x0000000000000000000000000000000000000000") {
-  startChainIndexer("worldchain-sepolia", WORLD_CONTRACT, WORLD_RPC, io, WORLD_START)
-    .catch((err) => console.error("[Indexer:worldchain-sepolia] startup error:", err));
+  startChainIndexer(WORLD_CHAIN_SLUG, WORLD_CONTRACT, WORLD_RPC, io, WORLD_START)
+    .catch((err) => console.error(`[Indexer:${WORLD_CHAIN_SLUG}] startup error:`, err));
 }

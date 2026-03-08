@@ -326,7 +326,7 @@ export default function CreatePage() {
         {inWorldApp ? (
           <>
             <div className="flex items-center gap-2 px-3 py-2 bg-[#d3aeff]/20 border-2 border-[#d3aeff] rounded-xl">
-              <span className="text-xs font-bold">🌐 Creating on World Chain Sepolia</span>
+              <span className="text-xs font-bold">🌐 Creating on World Chain</span>
             </div>
             <button
               onClick={handleWorldChainCreate}

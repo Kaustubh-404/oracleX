@@ -31,7 +31,7 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
 
   // World ID — only active inside World App
   const inWorldApp = isMiniApp();
-  const isWorldChain = chain === "worldchain-sepolia";
+  const isWorldChain = chain === "worldchain";
   const [widVerified, setWidVerified] = useState(false);
   const [widPending,  setWidPending]  = useState(false);
   const [widError,    setWidError]    = useState<string | null>(null);
@@ -215,7 +215,7 @@ export function TradePanel({ marketId, yesPct, noPct, chain = "sepolia", onSucce
       {/* World Chain badge */}
       {isWorldChainMode && (
         <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-[#d3aeff]/20 border-2 border-[#d3aeff] rounded-xl">
-          <span className="text-xs font-bold">🌐 World Chain Sepolia</span>
+          <span className="text-xs font-bold">🌐 World Chain</span>
           <span className="text-xs text-black/50 ml-auto">via World App</span>
         </div>
       )}
